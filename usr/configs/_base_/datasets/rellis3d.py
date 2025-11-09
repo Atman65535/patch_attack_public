@@ -1,7 +1,8 @@
+#from usr.utils.datasets import Rellis3DDataset
+import sys
+dataset_type = "Rellis3DDataset"
 # dataset settings
-dataset_type = 'BDD100KDataset'
-data_root = 'data/bdd100k/'
-
+data_root = 'data/rellis3d/'
 crop_size = (512, 1024)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -48,9 +49,7 @@ train_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        data_prefix=dict(
-            img_path='images/10k/train',
-            seg_map_path='labels/sem_seg/masks/train'),
+        ann_file='train.lst',
         pipeline=train_pipeline))
 val_dataloader = dict(
     batch_size=1,
@@ -60,11 +59,18 @@ val_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        data_prefix=dict(
-            img_path='images/10k/val',
-            seg_map_path='labels/sem_seg/masks/val'),
+        ann_file='val.lst',
         pipeline=test_pipeline))
-test_dataloader = val_dataloader
+test_dataloader = dict(
+    batch_size=1,
+    num_workers=4,
+    persistent_workers=True,
+    sampler=dict(type='DefaultSampler', shuffle=False),
+    dataset=dict(
+        type=dataset_type,
+        data_root=data_root,
+        ann_file='test.lst',
+        pipeline=test_pipeline))
 
 val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU'])
 test_evaluator = val_evaluator

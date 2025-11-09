@@ -95,7 +95,8 @@ def init_model(config: Union[str, Path, Config],
 
 
 def inference_model(model: BaseSegmentor,
-                    img: ImageType) -> Union[SegDataSample, SampleList]:
+                    img: ImageType,
+                    no_grad:bool=True) -> Union[SegDataSample, SampleList]:
     """Inference image(s) with the segmentor.
 
     Args:
@@ -112,7 +113,10 @@ def inference_model(model: BaseSegmentor,
     data, is_batch = _preprare_data(img, model)
 
     # forward the model
-    with torch.no_grad():
+    if no_grad:
+        with torch.no_grad():
+            results = model.test_step(data)
+    else:
         results = model.test_step(data)
 
     return results if is_batch else results[0]
