@@ -11,7 +11,6 @@ from mmengine.logging import print_log
 from mmengine.runner import Runner
 
 from mmseg.registry import RUNNERS, DATASETS, MODELS, HOOKS
-from mmseg.engine.hooks import 
 
 from usr.patch import PatchHandler
 from usr.metrics import PatchMetrics
