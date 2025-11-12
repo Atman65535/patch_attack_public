@@ -11,36 +11,22 @@ from mmengine.logging import print_log
 from mmengine.runner import Runner
 
 from mmseg.registry import RUNNERS, DATASETS, MODELS, HOOKS
-from mmseg.models import EncoderDecoder
 
 from usr.patch import PatchHandler
 from usr.metrics import PatchMetrics
 
-def parse_config():
-    pass
 
 config_file = "usr/configs/exp/patch_config.py"
 def main():
-    cfg = Config.fromfile(config_file)
-    epochs = cfg.get("epochs")
-    patch_handler = PatchHandler(cfg.get("patch_config"))
 
+    cfg = Config.fromfile(config_file)
     data_loader = cfg.get("train_dataloader")
     data_loader = Runner.build_dataloader(cfg.get("train_dataloader"))
-
-    model:EncoderDecoder
-    model = MODELS.build(cfg.get('model')).cuda()
-    model.eval()
-    for param in model.parameters():
-        param.requires_grad_(False)
-
-    for epoch in range(epochs):
+    model = MODELS.build(cfg.get('model'))
+    patch_handler = PatchHandler(cfg.get("patch_config"))
+    for iter in range(1):
         for idx, batch in enumerate(data_loader, 0):
-            data = model.data_preprocessor(batch)
-            ins : torch.Tensor
-            ins = data['inputs']
-            ins.cuda()
-            res = model.predict(ins)
+            print(batch)
     return
 
 if __name__ == "__main__":
