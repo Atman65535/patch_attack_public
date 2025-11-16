@@ -1,5 +1,4 @@
 #from usr.utils.datasets import Rellis3DDataset
-import sys
 dataset_type = "Rellis3DDataset"
 # dataset settings
 data_root = 'data/rellis3d/'

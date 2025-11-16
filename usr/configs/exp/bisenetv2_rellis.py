@@ -1,3 +1,4 @@
+# bisenetv2_4xb8-160k 1024x1024
 _base_ = [
     '../_base_/models/bisenetv2.py',
     '../_base_/datasets/rellis3d_1024x1024.py',
@@ -22,8 +23,3 @@ optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer)
 train_dataloader = dict(batch_size=4, num_workers=4)
 val_dataloader = dict(batch_size=1, num_workers=4)
 test_dataloader = val_dataloader
-optim_wrapper = dict(
-    _delete_=True,
-    type='AmpOptimWrapper',
-    optimizer=dict(type='SGD', lr=0.05, momentum=0.9, weight_decay=0.0005),
-    loss_scale=512.)
