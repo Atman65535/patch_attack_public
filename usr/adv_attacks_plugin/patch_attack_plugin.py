@@ -1,6 +1,6 @@
 # plugins/patch_attack_plugin.py
 import os, math
-from typing import Optional, Tuple, Dict, Any, List, Union
+from typing import ional, Tuple, Dict, Any, List, Union
 
 import torch
 import torch.nn as nn
@@ -448,7 +448,7 @@ class PatchAttackHook(Hook):
         if (batch_idx % 50) == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    # 保存补丁
+    # 保存补丁make_affine_matrix
     def after_train_epoch(self, runner):
         if not self.enabled:
             return
