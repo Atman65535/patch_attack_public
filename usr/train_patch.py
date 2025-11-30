@@ -22,6 +22,14 @@ from usr.metrics import PatchMetrics
 from usr.utils import Utils
 
 def build_model(cfg) -> EncoderDecoder:
+    """build_model build from MMLab APIs
+
+    Arguments:
+        cfg {ConfigDict} -- 
+
+    Returns:
+        EncoderDecoder -- just type, refer to mmseg.model.encoderdecoder
+    """    
     model = MODELS.build(cfg).cuda()
     model.eval()
     for param in model.parameters():
@@ -30,18 +38,29 @@ def build_model(cfg) -> EncoderDecoder:
     return model, preprocessor
 
 def predict(model, data):
+    """predict predict using model
+
+    Arguments:
+        model {encoderdecoder}
+        data {tensor} -- 
+
+    Returns:
+        tensor -- tensor parsed from mmlab data sample
+    """    
     res : List[SegDataSample]
     res = model.predict(data) 
 
-    pred, logits = Utils.parse_model_output(res, device='cuda')
+    pred, logits = Utils.parse_model_output(res)
+    return pred, logits
 
 def main():
+    torch.autograd.set_detect_anomaly(True)
     # cfg init
     config_file = "usr/configs/exp/patch_config.py"
     cfg = Utils.config_preprocess(config_file)
     # patch associated
     patch_handler = PatchHandler(cfg)
-    patch_metrics = PatchMetrics(cfg.patch_metrics)
+    patch_metrics = PatchMetrics(cfg)
     # data associated
     data_loader = Runner.build_dataloader(cfg.train_dataloader)
     # model associated
@@ -55,16 +74,14 @@ def main():
             # preprocess: normalize and apply patch
             preprocessed = preprocessor(batch)
             data = preprocessed['inputs']
-            data_gt = Utils.parse_data_samples(preprocessed['data_samples'], gt_sem=True)
+            data_gt, _, _ = Utils.parse_data_samples(preprocessed['data_samples'], gt_sem=True)
             #**********Attack***********#
             data_patched, gt_patched = patch_handler.apply_patch(data, data_gt)
-
             pred, logits = predict(model, data_patched)
             
-
-            loss = patch_metrics.get_loss(pred, logits)
-            patch_handler.update_patch(loss)
-    return
+            # gt_patched or data_gt? if the patch is invisible, we should use data_gt. other wise use gt_patched.
+            classify_loss = patch_metrics.classify_loss(logits, data_gt, patch_handler.patch_anchor)
+            patch_handler.update_patch(loss=classify_loss)
 
 if __name__ == "__main__":
 

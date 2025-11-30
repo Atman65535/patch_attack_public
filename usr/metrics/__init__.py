@@ -1,4 +1,4 @@
-from .patch_metrics import PatchMetrics
+from .patch_metrics_v1 import PatchMetrics
 
 __all__ = [
     "PatchMetrics"

@@ -13,7 +13,19 @@ class Utils:
                               gt_sem=False,
                               pred=False,
                               logits=False,):
-        '''
+        """parse_data_samples from List[SegDataSample] to Tensor
+            _, pred, _ = Utils.parse_data_samples(data, pred=True)
+        Arguments:
+            data {List[SegDataSample]} -- _description_
+
+        Keyword Arguments:
+            gt_sem {bool} -- _description_ (default: {False})
+            pred {bool} -- _description_ (default: {False})
+            logits {bool} -- _description_ (default: {False})
+
+        Returns:
+            _type_ -- _description_
+        """        '''
         usage inject the 'data_smaples' part of data, 
         then enable return of the part you want
         '''
@@ -25,23 +37,19 @@ class Utils:
         seg_logits = None
         #[B, C, H, W]
         if gt_sem:
-            device = data[0].gt_sem_seg.data.device
-            gt_sem_seg = torch.stack(
-                [i.gt_sem_seg.data for i in data], 
-                device=data[0].gt_sem_seg.data.device)
+            gt_sem_seg = torch.cat(
+                [i.gt_sem_seg.data for i in data])
         if pred:
-            pred_sem_seg = torch.stack(
-                [i.pred_sem_seg for i in data],
-                device=data[0].pred_sem_seg.data.device)
+            pred_sem_seg = torch.cat(
+                [i.pred_sem_seg.data for i in data])
         if logits:
-            seg_logits = torch.stack(
-                [i.seg_logits.data for i in data],
-                device=data[0].seg_logits.data.device)
+            seg_logits = torch.cat(
+                [i.seg_logits.data for i in data])
 
         return gt_sem_seg, pred_sem_seg, seg_logits
     
     @staticmethod
-    def parse_inputs(data:SegDataSample, device='cuda'):
+    def parse_inputs(data:SegDataSample):
         inputs = data['input']
         data_samples = data['data_sample']
 
@@ -49,18 +57,28 @@ class Utils:
         assert data_samples != None, "Utils: data sample is none, plz check data"
 
         input_batch = torch.stack(
-            [i for i in inputs], dim=0, device=device)
+            [i for i in inputs], dim=0)
         gt_sem_seg = torch.stack(
-            [i.gt_sem_seg.data for i in data_samples], dim=0, device=device) 
+            [i.gt_sem_seg.data for i in data_samples], dim=0) 
         
         return input_batch, gt_sem_seg
     
     @staticmethod
-    def parse_model_output(data:List[SegDataSample], device='cuda'):
+    def parse_model_output(data:List[SegDataSample]):
+        """parse_model_output from mmlab type to universal tensor type
+            pred, logits = Utils.parse_model_output(res)
+
+        here all tensors are on cuda and the output will on cuda as well
+        Arguments:
+            data {List[SegDataSample]} -- data after model.predict
+
+        Returns:
+            tensor -- literally
+        """        
         pred_sem_seg = torch.stack(
-            [i.pred_seg_seg for i in data], dim=0, device=device)
+            [i.pred_sem_seg.data for i in data], dim=0)
         seg_logits = torch.stack(
-            [i.seg_logits.data for i in data], dim=0, device=device)
+            [i.seg_logits.data for i in data], dim=0)
         
         return pred_sem_seg, seg_logits
     

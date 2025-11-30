@@ -1,3 +1,7 @@
+####################################
+#######     DEPRECATED        ######
+####################################
+
 from typing import List, Optional, Union
 
 import torch
@@ -41,52 +45,16 @@ class PatchMetrics():
                                       ignore_index=self.ignore_index)
         
         pass
-
-    # this function return the entropy of prediction
-    # uniform the distribution, pull down the confidence of model
-    @staticmethod
-    def _prediction_entropy_loss(logits: Tensor) -> float:
-        probabilities = F.softmax(logits, dim=1).clamp_min(1e-12)
-        entropy_map = -(probabilities * probabilities.log()).sum(dim=1)
-        entropy_mean = entropy_map[self.valid].mean() if self.valid.any() else entropy_map.mean()
-
-        return self.weight_entropy * entropy_mean
     
-    @staticmethod
-    def _mean_crossentropy_loss(logits=None, label=None):
-        ce_loss = nn.CrossEntropyLoss(weight=self.weight, 
-                                      reduction='mean',
-                                      ignore_index=self.ignore_index)
-        loss = ce_loss(logits, label)
+    # @staticmethod
+    # def _RGB_regularzation_loss(patch, img_behind):
+    #     color_diff = patch - img_behind
+    #     l2_loss = torch.norm(color_diff, p=2, dim=1).mean()
+    #     luminance_patch = PatchMetrics._rgb2luminance(patch)
+    #     luminance_img = PatchMetrics._rgb2luminance(img_behind)
+    #     l1_loss = torch.abs(luminance_img - luminance_patch).mean()
 
-    @staticmethod
-    def _topk_mean_crossentropy_loss(logits, ratio):
-        ce_map = nn.CrossEntropyLoss(weight=None,
-                                     ignore_index=self.ignore_index,
-                                     reduction="none")
-        valid_values = ce_map[mask]
-        assert valid_values.numel() > 0, f"too strict map makes valid values 0!"
-        k = max(1, int(ratio * valid_values.numel()))
-        return torch.topk(valid_values, k=k, largest=True).values.mean()
-    
-    # TODO finetune this method for lab euclidian distance
-    @staticmethod
-    def _LAB_regularzation_loss(patch, img_behind):
-        patch_lab = kc.rgb_to_lab(patch)
-        original_lab = kc.rgb_to_lab(img_behind)
-        diff = original_lab - patch_lab
-        loss = torch.norm(diff, p=2, dim=1).mean()
-        return loss * config.lab_weight
-    
-    @staticmethod
-    def _RGB_regularzation_loss(patch, img_behind):
-        color_diff = patch - img_behind
-        l2_loss = torch.norm(color_diff, p=2, dim=1).mean()
-        luminance_patch = PatchMetrics._rgb2luminance(patch)
-        luminance_img = PatchMetrics._rgb2luminance(img_behind)
-        l1_loss = torch.abs(luminance_img - luminance_patch).mean()
-
-        return config.l1_weight * l1_loss + config.l2_weight * l2_loss
+    #     return config.l1_weight * l1_loss + config.l2_weight * l2_loss
         
     @staticmethod
     def _rgb2luminance(img: Tensor):
@@ -105,7 +73,6 @@ class PatchMetrics():
     def get_fw_iou(self, model_output, label):
         class_iou = self._class_iou()
         return (class_iou * self.weight).sum / self.weight.sum()
-        pass
 
     def _class_iou(self, classes=19, predicts=None, labels=None, ignore_label=255):
         ious = []
@@ -123,4 +90,40 @@ class PatchMetrics():
             ious.append(intersection / union)
         
         return ious
+    
+
+    # this function return the entropy of prediction
+    # uniform the distribution, pull down the confidence of model
+    # @staticmethod
+    # def _prediction_entropy_loss(logits: Tensor) -> float:
+    #     probabilities = F.softmax(logits, dim=1).clamp_min(1e-12)
+    #     entropy_map = -(probabilities * probabilities.log()).sum(dim=1)
+    #     entropy_mean = entropy_map[self.valid].mean() if self.valid.any() else entropy_map.mean()
+
+    #     return self.weight_entropy * entropy_mean
+    
+    # @staticmethod
+    # def _mean_crossentropy_loss(logits=None, label=None):
+    #     ce_loss = nn.CrossEntropyLoss(weight=self.weight, 
+    #                                   reduction='mean',
+    #                                   ignore_index=self.ignore_index)
+    #     loss = ce_loss(logits, label)
+
+    # @staticmethod
+    # def _topk_mean_crossentropy_loss(logits, ratio):
+    #     ce_map = nn.CrossEntropyLoss(weight=None,
+    #                                  ignore_index=self.ignore_index,
+    #                                  reduction="none")
+    #     valid_values = ce_map[mask]
+    #     assert valid_values.numel() > 0, f"too strict map makes valid values 0!"
+    #     k = max(1, int(ratio * valid_values.numel()))
+    #     return torch.topk(valid_values, k=k, largest=True).values.mean()
+    
+    # @staticmethod
+    # def _LAB_regularzation_loss(patch, img_behind):
+    #     patch_lab = kc.rgb_to_lab(patch)
+    #     original_lab = kc.rgb_to_lab(img_behind)
+    #     diff = original_lab - patch_lab
+    #     loss = torch.norm(diff, p=2, dim=1).mean()
+    #     return loss * config.lab_weightc
             
