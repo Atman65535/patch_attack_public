@@ -63,3 +63,10 @@ class PatchMetrics():
                             gt_label[:, h_start:h_end, w_start:w_end])
         
         return loss * self.weight_classify_loss
+
+    #TODO the fourth loss term
+    def l1_regularization_loss(self):
+        pass
+
+    def l2_regularization_loss(self):
+        pass

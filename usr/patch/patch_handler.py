@@ -40,7 +40,7 @@ class Patch(nn.Module):
         else:
             raise "expected patch mode is rgb or gray_scale"
 
-class PatchHandler():
+class PatchHandler:
     '''
     config : read "patch_config" segment and process it 
     '''

@@ -6,7 +6,9 @@ _base_ = [
 ]
 crop_size = (1024, 1024)
 data_preprocessor = dict(size=crop_size)
-model = dict(data_preprocessor=data_preprocessor)
+# TODO finish pretrained here
+model = dict(data_preprocessor=data_preprocessor,
+             pretrained="")
 param_scheduler = [
     dict(type='LinearLR', by_epoch=False, start_factor=0.1, begin=0, end=1000),
     dict(

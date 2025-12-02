@@ -21,7 +21,7 @@ from usr.patch import PatchHandler
 from usr.metrics import PatchMetrics
 from usr.utils import Utils
 
-def build_model(cfg) -> EncoderDecoder:
+def build_model(cfg):
     """build_model build from MMLab APIs
 
     Arguments:
@@ -54,7 +54,6 @@ def predict(model, data):
     return pred, logits
 
 def main():
-    torch.autograd.set_detect_anomaly(True)
     # cfg init
     config_file = "usr/configs/exp/patch_config.py"
     cfg = Utils.config_preprocess(config_file)
@@ -79,7 +78,7 @@ def main():
             data_patched, gt_patched = patch_handler.apply_patch(data, data_gt)
             pred, logits = predict(model, data_patched)
             
-            # gt_patched or data_gt? if the patch is invisible, we should use data_gt. other wise use gt_patched.
+            # gt_patched or data_gt? if the patch is invisible, we should use data_gt. otherwise use gt_patched.
             classify_loss = patch_metrics.classify_loss(logits, data_gt, patch_handler.patch_anchor)
             patch_handler.update_patch(loss=classify_loss)
 
