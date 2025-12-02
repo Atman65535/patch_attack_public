@@ -68,5 +68,27 @@ class PatchMetrics():
     def l1_regularization_loss(self):
         pass
 
-    def l2_regularization_loss(self):
-        pass
+    @staticmethod
+    def l2_regularization_loss(img: torch.Tensor, width, height):
+        area = width * height
+        loss_map = torch.pow(img, 2)
+        loss = loss_map.sum()
+        loss = loss / area
+        return loss
+
+    @staticmethod
+    def smooth_loss(img: torch.Tensor, width, height):
+        """
+
+        Args:
+            img: the tensor for calculating loss,
+                shape [C, H, W]
+
+        Returns: value of this loss
+
+        """
+        area = width * height
+        smooth_horizontal = torch.pow(img[:, 1:, :] - img[:, :-1, :], 2)
+        smooth_vertical = torch.pow(img[:, :, 1:] - img[:, :, :-1], 2)
+        loss = (torch.sum(smooth_vertical) + torch.sum(smooth_horizontal)) / area
+        return loss

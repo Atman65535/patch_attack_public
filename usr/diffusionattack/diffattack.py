@@ -15,7 +15,6 @@ def preprocess(image, res=512):
     print(f"preprocess in diffattack.py have not finish!")
     pass
 
-#TODO need grad here?
 @torch.no_grad()
 def ddim_reverse_sample(image, prompt, model, num_inference_steps: int = 20, guidance_scale: float = 2.5,
                         res=256):
