@@ -3,39 +3,9 @@ import torch
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 from mmengine.config import Config, ConfigDict
 
-from utils import aggregate_attention
+from utils import aggregate_attention, preprocess, encoder
+from monkeypatch import register_attention_control, reset_attention_control
 
-# TODO fine here
-def preprocess(image, res=256):
-    """
-    this is a checker of image type and shape
-    Args:
-        image: [B, C, res, res]
-        res: maybe 256
-    """
-    # image = image.resize((res, res), resample=Image.LANCZOS)
-    # image = np.array(image).astype(np.float32) / 255.0
-    # image = image[None].transpose(0, 3, 1, 2)
-    # image = torch.from_numpy(image)[:, :3, :, :].cuda()
-    # return 2.0 * image - 1.0
-    if ((image.shape[-1] == image.shape[-2]) and image.shape[-1] == res):
-        raise TypeError(f"expected image shape is same as {res}, but get {image.shape}")
-    if image.shape[2] != 3:
-        raise TypeError("wrong image shape after preprocess in main function!")
-
-def encoder(image, model, res=256):
-    """
-    Args:
-        image: [B,C,H,W], H=W=res
-        model: model
-        res: res
-    Returns: latent after vae encoder.
-    """
-    generator = torch.Generator().manual_seed(8888) # cpu random seed
-    image = preprocess(image, res)
-    gpu_generator = torch.Generator(device=image.device) # gpu random seed
-    gpu_generator.manual_seed(generator.initial_seed())
-    return 0.18215 * model.vae.encode(image).latent_dist.sample(generator=gpu_generator)
 
 @torch.enable_grad()
 def ddim_reverse_to_attack_start_latent(image,
@@ -192,90 +162,6 @@ def diffusion_step(model, latents, context, t, guidance_scale):
     latents = model.scheduler.step(noise_pred, t, latents)["prev_sample"]
     return latents
 
-def register_attention_control(model, controller):
-    def ca_forward(self, place_in_unet):
-        def forward(
-                hidden_states: torch.FloatTensor,
-                encoder_hidden_states: Optional[torch.FloatTensor] = None,
-                attention_mask: Optional[torch.FloatTensor] = None,
-                temb: Optional[torch.FloatTensor] = None,
-                # scale: float = 1.0,
-        ):
-            if self.spatial_norm is not None:
-                hidden_states = self.spatial_norm(hidden_states, temb)
-
-            batch_size, sequence_length, _ = (
-                hidden_states.shape
-                if encoder_hidden_states is None
-                else encoder_hidden_states.shape
-            )
-
-            if attention_mask is not None:
-                attention_mask = self.prepare_attention_mask(
-                    attention_mask, sequence_length, batch_size
-                )
-                # scaled_dot_product_attention expects attention_mask shape to be
-                # (batch, heads, source_length, target_length)
-                attention_mask = attention_mask.view(
-                    batch_size, self.heads, -1, attention_mask.shape[-1]
-                )  # type: ignore
-
-            if self.group_norm is not None:
-                hidden_states = self.group_norm(
-                    hidden_states.transpose(1, 2)
-                ).transpose(1, 2)
-
-            query = self.to_q(hidden_states)
-
-            is_cross = encoder_hidden_states is not None
-            if encoder_hidden_states is None:
-                encoder_hidden_states = hidden_states
-            elif self.norm_cross:
-                encoder_hidden_states = self.norm_encoder_hidden_states(
-                    encoder_hidden_states
-                )
-            key = self.to_k(encoder_hidden_states)
-            value = self.to_v(encoder_hidden_states)
-
-            def reshape_heads_to_batch_dim(tensor):
-                batch_size, seq_len, dim = tensor.shape
-                head_size = self.heads
-                tensor = tensor.reshape(
-                    batch_size, seq_len, head_size, dim // head_size
-                )
-                tensor = tensor.permute(0, 2, 1, 3).reshape(
-                    batch_size * head_size, seq_len, dim // head_size
-                )
-                return tensor
-
-            query = reshape_heads_to_batch_dim(query)
-            key = reshape_heads_to_batch_dim(key)
-            value = reshape_heads_to_batch_dim(value)
-
-            sim = torch.einsum("b i d, b j d -> b i j", query, key) * self.scale
-            attn = sim.softmax(dim=-1)
-            attn = controller(attn, is_cross, place_in_unet)
-            out = torch.einsum("b i j, b j d -> b i d", attn, value)
-
-            def reshape_batch_dim_to_heads(tensor):
-                batch_size, seq_len, dim = tensor.shape
-                head_size = self.heads
-                tensor = tensor.reshape(
-                    batch_size // head_size, head_size, seq_len, dim
-                )
-                tensor = tensor.permute(0, 2, 1, 3).reshape(
-                    batch_size // head_size, seq_len, dim * head_size
-                )
-                return tensor
-
-            out = reshape_batch_dim_to_heads(out)
-            out = self.to_out[0](out)
-            out = self.to_out[1](out)
-
-            out = out / self.rescale_output_factor
-            return out
-
-        return forward
 
 class DiffAttack:
     def __init__(self,
@@ -459,6 +345,8 @@ class DiffAttack:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        reset_attention_control(model)
 
     def _batch_optimize_uncond_embed(self,
                                      model,

@@ -1,5 +1,37 @@
 import torch
 
+# TODO fine here
+def preprocess(image, res=256):
+    """
+    this is a checker of image type and shape
+    Args:
+        image: [B, C, res, res]
+        res: maybe 256
+    """
+    # image = image.resize((res, res), resample=Image.LANCZOS)
+    # image = np.array(image).astype(np.float32) / 255.0
+    # image = image[None].transpose(0, 3, 1, 2)
+    # image = torch.from_numpy(image)[:, :3, :, :].cuda()
+    # return 2.0 * image - 1.0
+    if ((image.shape[-1] == image.shape[-2]) and image.shape[-1] == res):
+        raise TypeError(f"expected image shape is same as {res}, but get {image.shape}")
+    if image.shape[2] != 3:
+        raise TypeError("wrong image shape after preprocess in main function!")
+
+def encoder(image, model, res=256):
+    """
+    Args:
+        image: [B,C,H,W], H=W=res
+        model: model
+        res: res
+    Returns: latent after vae encoder.
+    """
+    generator = torch.Generator().manual_seed(8888) # cpu random seed
+    image = preprocess(image, res)
+    gpu_generator = torch.Generator(device=image.device) # gpu random seed
+    gpu_generator.manual_seed(generator.initial_seed())
+    return 0.18215 * model.vae.encode(image).latent_dist.sample(generator=gpu_generator)
+
 
 def aggregate_attention(prompts, attention_store, res: int, from_where, is_cross: bool, select: int, is_cpu=True):
     """
