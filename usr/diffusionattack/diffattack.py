@@ -6,35 +6,141 @@ from mmengine.config import Config, ConfigDict
 from utils import aggregate_attention
 
 # TODO fine here
-def preprocess(image, res=512):
+def preprocess(image, res=256):
+    """
+    this is a checker of image type and shape
+    Args:
+        image: [B, C, res, res]
+        res: maybe 256
+    """
     # image = image.resize((res, res), resample=Image.LANCZOS)
     # image = np.array(image).astype(np.float32) / 255.0
     # image = image[None].transpose(0, 3, 1, 2)
     # image = torch.from_numpy(image)[:, :3, :, :].cuda()
     # return 2.0 * image - 1.0
-    print(f"preprocess in diffattack.py have not finish!")
-    pass
+    if ((image.shape[-1] == image.shape[-2]) and image.shape[-1] == res):
+        raise TypeError(f"expected image shape is same as {res}, but get {image.shape}")
+    if image.shape[2] != 3:
+        raise TypeError("wrong image shape after preprocess in main function!")
+
+def encoder(image, model, res=256):
+    """
+    Args:
+        image: [B,C,H,W], H=W=res
+        model: model
+        res: res
+    Returns: latent after vae encoder.
+    """
+    generator = torch.Generator().manual_seed(8888) # cpu random seed
+    image = preprocess(image, res)
+    gpu_generator = torch.Generator(device=image.device) # gpu random seed
+    gpu_generator.manual_seed(generator.initial_seed())
+    return 0.18215 * model.vae.encode(image).latent_dist.sample(generator=gpu_generator)
+
+@torch.enable_grad()
+def ddim_reverse_to_attack_start_latent(image,
+                          cond_prompt,
+                          model,
+                          num_inference_steps=100,
+                          guidance_scale=2.5,
+                          res=256,
+                          transition_steps=5):
+    """
+    Args:
+        image: preprocessed image, RGB, BCHW.
+        cond_prompt: USER prompt, not the uncond one.
+        model: ldm_model
+        num_inference_steps: the sample point for model, from 1 to 1000 uniformly
+        guidance_scale: for Classifier Free Guidance.
+        res: resolution of image
+        transition_steps: between z_0 and z_attack, target of self attn
+
+    Returns: the attack start latent, such as z_6, for 5 transition steps.
+    """
+    #batch_size = 1
+    if type(image) != torch.Tensor:
+        raise TypeError(f"Expected torch.Tensor, but get type(image)={type(image)}")
+    #batch_size = image.shape[0]
+    batch_size = 1 # need rethink
+    max_length = model.tokenizer.model_max_length # shape of uncond_embedding [batch size, max_length, 1024]
+    uncond_input_token = model.tokenizer(
+        [""] * batch_size, padding='max_length', max_length=max_length, return_tensors='pt'
+    ) # 'pt' means pytorch tensors.
+    #uncond_embeddings = model.text_encoder(uncond_input_token.input_ids.to(model.device))[0]
+    uncond_embeddings = model.text_encoder(uncond_input_token.input_ids.to(model.device)).last_hidden_state
+
+    cond_input = model.tokenizer(
+        cond_prompt, # prompt: ['soup_bowl', 'soup_bowl'], cond_prompt: 'soup_bowl'
+        padding="max_length",
+        max_length=max_length,
+        truncation=True,
+        return_tensors="pt",
+    )
+    cond_embeddings = model.text_encoder(cond_input.input_ids.to(model.device)).last_hidden_state
+
+    context = torch.cat([uncond_embeddings, cond_embeddings])
+
+    model.scheduler.set_timesteps(num_inference_steps)
+    timesteps = model.scheduler.timesteps.flip(0) # dim = 0 # [1, 51, 101....951] , 20 steps.
+
+    latent_z0 = encoder(image, model, res=res)
+
+    #classifier free guidance
+    latents_cfg = torch.cat([latent_z0, latent_z0])
+    timestep = timesteps[0] # the very first one, tensor(1)
+    attack_start_timestep = timesteps[0 + transition_steps + 1]# start = transition + 1
+    noise_pred = model.unet(latents_cfg, timestep, encoder_hidden_states=context)["sample"]
+
+    noise_pred_uncond, noise_pred_cond = noise_pred.chunk(2)
+    noise_pred_cfg = noise_pred_uncond + guidance_scale * (noise_pred_cond - noise_pred_uncond)
+
+    if attack_start_timestep > model.scheduler.config.num_train_timesteps:
+        raise ValueError(f"Expected an val < T_max, got {attack_start_timestep}")
+    alpha_bar_attack_start_timestep = model.scheduler.alphas_cumprod[attack_start_timestep]
+    reverse_x0 = (1 / torch.sqrt(model.scheduler.alphas_cumprod[t]) * (
+            latents - noise_pred * torch.sqrt(1 - model.scheduler.alphas_cumprod[t])))
+    attack_start_latent = (reverse_x0 * torch.sqrt(alpha_bar_attack_start_timestep) +
+                           torch.sqrt(1 - alpha_bar_attack_start_timestep) * noise_pred_cfg)
+    return attack_start_latent
+
 
 @torch.no_grad()
-def ddim_reverse_sample(image, prompt, model, num_inference_steps: int = 20, guidance_scale: float = 2.5,
-                        res=256):
+def ddim_reverse_get_transition_steps(image,
+                                      cond_prompt,
+                                      model,
+                                      num_inference_steps=100,
+                                      guidance_scale=2.5,
+                                      res=256,
+                                      transition_steps=5):
     """
-            ==========================================
-            ============ DDIM Inversion ==============
-            ==========================================
-    """
-    batch_size = 1
 
-    max_length = 77
+    Args:
+        image: preprocessed image, BCHW
+        cond_prompt: USER prompt, no uncond one.
+        model:
+        num_inference_steps: T // num_inf_stp = gap
+        guidance_scale: for classifier free guidance
+        res: resolution
+        transition_steps: between z_0 and z_attack, target of self attn
+
+    Returns: a list of latents.
+            such as [z_5, z_4, z_3, z_2, z_1] under the condition that transition stp = 5
+
+    """
+    if type(image) != torch.Tensor:
+        raise TypeError(f"Expected torch.Tensor, but get type(image)={type(image)}")
+    #batch_size = image.shape[0]
+    batch_size = 1 # this need to rethink in later works.
+    max_length = model.tokenizer.model_max_length
     uncond_input = model.tokenizer(
         [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
     )
     uncond_embeddings = model.text_encoder(uncond_input.input_ids.to(model.device))[0]
 
     text_input = model.tokenizer(
-        prompt[0],
+        cond_prompt,
         padding="max_length",
-        max_length=model.tokenizer.model_max_length,
+        max_length=max_length,
         truncation=True,
         return_tensors="pt",
     )
@@ -48,11 +154,11 @@ def ddim_reverse_sample(image, prompt, model, num_inference_steps: int = 20, gui
     latents = encoder(image, model, res=res)
     timesteps = model.scheduler.timesteps.flip(0)
 
-    all_latents = [latents]
+    sequential_latents = [latents] # z_0, z_1 ...
 
     #  Not inverse the last step, as the alpha_bar_next will be set to 0 which is not aligned to its real value (~0.003)
     #  and this will lead to a bad result.
-    for t in tqdm(timesteps[:-1], desc="DDIM_inverse"):
+    for t in tqdm(timesteps[:transition_steps], desc="DDIM_inverse"):
         latents_input = torch.cat([latents] * 2)
         noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
 
@@ -69,10 +175,10 @@ def ddim_reverse_sample(image, prompt, model, num_inference_steps: int = 20, gui
 
         latents = reverse_x0 * torch.sqrt(alpha_bar_next) + torch.sqrt(1 - alpha_bar_next) * noise_pred
 
-        all_latents.append(latents)
+        sequential_latents.append(latents)
 
-    #  all_latents[N] -> N: DDIM steps  (X_{T-1} ~ X_0)
-    return latents, all_latents
+    inverted_sequence_latents = sequential_latents[:0:-1]
+    return inverted_sequence_latents # [z_5, z_4, ...]
 
 def init_latent(latent, model, height, width, batch_size):
     latents = latent.expand(batch_size, model.unet.in_channels, height // 8, width // 8).to(model.device)
@@ -231,8 +337,8 @@ class DiffAttack:
         print(f"encode token: true{true_label_token}, uncond{uncond_label_token}")
 
         # list of latent space variables
-        latent, inversion_latents = ddim_reverse_sample(image, prompt, model,
-                                                        num_inference_steps, guidance_scale, resolution)
+        latent, inversion_latents = ddim_reverse_get_transition_steps(image, prompt, model,
+                                                                      num_inference_steps, guidance_scale, resolution)
         inversion_latents = inversion_latents[::-1]
 
         init_prompt = [prompt[0]]
@@ -354,7 +460,14 @@ class DiffAttack:
         loss.backward()
         optimizer.step()
 
+    def _batch_optimize_uncond_embed(self,
+                                     model,
+                                     num_inference_steps=100,
+                                     image:torch.Tensor=None,
+                                     resolution=256,
+                                     transition_steps=5):
 
+        return best_uncond_embeddings
     def _get_label_from_gt(gt):
         """
         gt: input gt map of one image

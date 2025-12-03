@@ -48,6 +48,16 @@ class AttentionStore(AttentionControl):
                 "down_self": [], "mid_self": [], "up_self": []}
 
     def forward(self, attn, is_cross: bool, place_in_unet: str):
+        """
+
+        Args:
+            attn: attention map
+            is_cross: to assign whether a cross attention map
+            place_in_unet: down, mid or up. Three stages
+
+        Returns:just attention map
+
+        """
         key = f"{place_in_unet}_{'cross' if is_cross else 'self'}"
         if attn.shape[1] <= (self.res // 16) ** 2:  # avoid memory overhead
             self.step_store[key].append(attn)
@@ -75,13 +85,14 @@ class AttentionStore(AttentionControl):
 
 class AttentionControlEdit(AttentionStore, abc.ABC):
     def __init__(self, num_steps: int,
-                 self_replace_steps: Union[float, Tuple[float, float]], res):
+                 self_replace_steps: Union[float, Tuple[float, float]],
+                 res):
         """
 
         Args:
-            num_steps:
+            num_steps: steps for diffusion
             self_replace_steps:
-            res:
+            res: resolution of image
         """
         super(AttentionControlEdit, self).__init__(res)
         self.batch_size = 2
