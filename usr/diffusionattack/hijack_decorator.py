@@ -69,7 +69,6 @@ class AttentionContextHolder:
                        **cross_attention_kwargs,):
             r"""
             The forward method of the `Attention` class.
-
             Args:
                 hidden_states (`torch.Tensor`):
                     The hidden states of the query.
@@ -165,3 +164,6 @@ def hijack_wrapper(context, controller, phase_of_unet):
         attention_probs = controller(attention_probs, is_cross_attention, phase_of_unet)
         return attention_probs
     return inject_controller
+
+if __name__ == "__main__":
+    pass
