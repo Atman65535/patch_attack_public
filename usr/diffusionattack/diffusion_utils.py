@@ -1,12 +1,17 @@
 import torch
+from diffusers import StableDiffusionPipeline, DDIMScheduler
 
-# TODO fine here
+
+
+
+# TODO add range check, [0, 1] or [-1, 1]
 def preprocess(image, res=256):
     """
-    this is a checker of image type and shape
+    Check image shape and type
+    expected : [B, 3, res, res]
     Args:
         image: [B, C, res, res]
-        res: maybe 256
+        res: expected 256 in out experiment
     """
     # image = image.resize((res, res), resample=Image.LANCZOS)
     # image = np.array(image).astype(np.float32) / 255.0
@@ -18,6 +23,8 @@ def preprocess(image, res=256):
     if image.shape[2] != 3:
         raise TypeError("wrong image shape after preprocess in main function!")
 
+
+# TODO really need this encoder here ? or put else where
 def encoder(image, model, res=256):
     """
     Args:
@@ -32,7 +39,7 @@ def encoder(image, model, res=256):
     gpu_generator.manual_seed(generator.initial_seed())
     return 0.18215 * model.vae.encode(image).latent_dist.sample(generator=gpu_generator)
 
-
+#TODO maybe you should remove this, because there is an implement in attention controller.
 def aggregate_attention(prompts, attention_store, res: int, from_where, is_cross: bool, select: int, is_cpu=True):
     """
 
@@ -60,13 +67,15 @@ def aggregate_attention(prompts, attention_store, res: int, from_where, is_cross
     out = out.sum(0) / out.shape[0]
     return out.cpu() if is_cpu else out
 
+
 def build_label_embeddings(model,
                            label_dict,
                            diffusion_steps,
                            optimize_iterations,
                            label_cls=19):
     """
-
+    build a diction: use [label] to get its embedding which from tokenizer and
+    then text_encoder.
     Args:
         model: stable diffusion model
         label_dict: true label dict describes label
@@ -86,7 +95,9 @@ def build_label_embeddings(model,
             pass
 
         embedding_dict[label] = embedding
-
-
     return embedding_dict
-    pass
+
+if __name__ == "__main__":
+    model = build_diffusion_model()
+    if model:
+        print("object build_diffusion_model checked")

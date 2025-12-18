@@ -2,7 +2,8 @@
 File: hijack_decorator.py
 Author: Atman
 Date: 12/7/25
-Description:
+Description: A wrapped method for attention control and Unet component replacement.
+            But it is too hard to read and interpret.
     
 """
 from typing import Optional

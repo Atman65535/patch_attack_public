@@ -2,7 +2,6 @@ from typing import Union, Tuple, List
 import warnings
 
 import torch
-from diffusers.models.attention_processor import Attention, AttnProcessor
 
 def _empty_attention_storage():
     return dict({
@@ -12,6 +11,7 @@ def _empty_attention_storage():
 
 def _get_attention_storage_key(phase_of_unet, is_cross_attention):
     """
+    Input UNet stage and attention type, return key of the attention storage dict.
     Args:
         phase_of_unet: "down", "mid", "up"
         is_cross_attention: true -> cross attention , else self attention

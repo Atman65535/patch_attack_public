@@ -94,6 +94,12 @@ def cfg_predict_noise(model, latent_input, uncond_embeddings, cond_embeddings, t
     noise_pred = noise_uncond + guidance_scale * (noise_cond - noise_uncond)
     return noise_pred
 
+def ddim_denoise(model, latent_input, prompt, timestep, guidance_scale):
+    uncond_embed = build_unconditional_embeddings(model, latent_input.shape[0])
+    cond_embed = build_conditional_embeddings(model, latent_input.shape[0], prompt)
+    noise = cfg_predict_noise(model, latent_input, uncond_embed, cond_embed, timestep, guidance_scale)
+
+
 #########################################
         # This part only for dbg
 #########################################

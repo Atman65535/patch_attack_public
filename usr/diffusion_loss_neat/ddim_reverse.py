@@ -22,9 +22,9 @@ def ddim_reverse(original_image: torch.Tensor,
                  intermediate_steps=5,
                  resolution=256):
     """
-    This function transfer an RGB CHW square image to latent space, with ddim reverse.
+    This function transfer an RGB BCHW square image to latent space, with ddim reverse.
     Args:
-        batch_size
+        batch_size: Batch size of image, maybe 1 for ordinary use, but 2 [clean, adv] for attack
         num_inference_steps: this name align to diffusion pipeline.
         guidance_scale: for CFG process, always 3-10
         intermediate_steps: steps for denoise and attention map calculation
