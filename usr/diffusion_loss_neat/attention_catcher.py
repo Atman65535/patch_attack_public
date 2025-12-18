@@ -11,7 +11,7 @@ from typing import Tuple
 import torch
 
 from UNet_patch import register_attention_control, reset_attention_control
-from diffuison_utils import
+from diffuison_utils import ddim_denoise
 
 class SelfAttentionLoss:
     """
@@ -21,11 +21,11 @@ class SelfAttentionLoss:
     """
     def __init__(self):
         self.criterion = torch.nn.MSELoss()
-        self.loss = 0
+        self.loss = torch.tensor(0)
 
     def update_loss(self, attn_clean, attn_adv):
         attn_clean = attn_clean.expand(attn_adv.shape)
-        if attn_clean.shape is not attn_adv.shape:
+        if attn_clean.shape != attn_adv.shape:
             raise TypeError(f"SelfAttnLoss:"
                             f"expected input shapes are same, but get"
                             f"attn_adv{attn_adv.shape}, attn_clean{attn_clean.shape}")
@@ -76,6 +76,7 @@ class AttentionStorage:
     "mid_self": [], (1)
     "up_self"     (9)
     }
+    if we only need one type of map, there maybe only 10 maps, 5 self and 5 cross
     """
     def __init__(self):
         self.dynamic_storage = self._get_empty_store()
@@ -84,7 +85,10 @@ class AttentionStorage:
 
     def update_after_unet(self):
         if self.aggregate_storate == {}:
-            self.aggregate_storate = self.dynamic_storage
+            self.aggregate_storate = {
+                key: [v.clone() for v in self.dynamic_storage[key]]
+                for key in self.dynamic_storage
+            }
         else:
             for key in self.aggregate_storate.keys():
                 for i in range(len(self.aggregate_storate[key])):
@@ -129,19 +133,21 @@ class AttentionCatcher:
     def __init__(self,
                  batch_size=2,
                  resolution:int =256,
-                 target_map_resolution=None):
+                 target_map_resolution=None,
+                 checked=False):
         if batch_size != 2:
             warnings.warn("We can't make sure our sys can run properly when batch_size is not 2", RuntimeWarning)
         self.batch_size = batch_size
         self.cfg_batch_size = batch_size * 2 # for CFG, the latent we get is twice of input
         self.resolution = resolution
-        self.target_resolution = target_map_resolution
+        self.target_map_resolution = target_map_resolution
+        self.checked=checked
 
         # we set div 16 as default, if input 256, get 16
         if target_map_resolution is None:
             vae_res = resolution >> 3 # div 8
             self.target_map_resolution = vae_res >> 1
-        self.target_img_tokens = self.target_resolution ** 2
+        self.target_map_tokens = self.target_map_resolution ** 2
 
         self.process_tracker = ProcessTracker(32, 5)
         self.attn_storage = AttentionStorage()
@@ -156,26 +162,25 @@ class AttentionCatcher:
         self.process_tracker.update_current_attn_layer()
         # we only need conditional attention.
         # cond_attn: [Batchsize * heads, HW, HW or 77]
-        cond_attn = attention[self.batch_size:]
+        hw = attention.shape[0]
+        #uncond_attn = attention[:self.batch_size/2]
+        cond_attn = attention[hw//2:]
         heads = cond_attn.shape[0] // self.batch_size
-
-        # uncond_attn = attention[:self.batch_size/2]
-        cond_attn = attention[self.batch_size/2:]
         # check attention type
         if is_cross and cond_attn.shape[-1] != 77:
             raise TypeError(f"Not cross attention here! Check your chanel {cond_attn.shape}")
-        if not is_cross and cond_attn.shape[-1] != cond_attn[-2]:
+        if not is_cross and cond_attn.shape[-1] != cond_attn.shape[-2]:
             raise TypeError(f"Not self attention here! Check your channel {cond_attn.shape}")
 
         # store desired attention maps, include [clean, adv], batchsize = 2
-        if cond_attn.shape[1] == self.target_map_resolution:
-            self.attn_storage.store(cond_attn)
+        if cond_attn.shape[1] == self.target_map_tokens:
+            self.attn_storage.store(cond_attn, is_cross, unet_stage)
 
 
         # update self attention loss
         if not is_cross: # self
             cond_attn = cond_attn.reshape(self.batch_size, heads,
-                                          cond_attn.shape[1:]) #[2, heads, HW, HW)
+                                          *cond_attn.shape[1:]) #[2, heads, HW, HW]
             attn_clean = cond_attn[0]
             attn_adv = cond_attn[1:]
             self.self_attn_loss.update_loss(attn_clean, attn_adv)
@@ -187,8 +192,8 @@ class AttentionCatcher:
             # reset dynamic storage and store this layer
         return
 
-    def extract_cross_attn_map(self, stages: Tuple[str]):
-        target_tokens = self.target_img_tokens
+    def extract_cross_attn_map(self, stages: Tuple[str, ...]):
+        target_tokens = self.target_map_tokens
         is_cross = True
         average_attentions = self.attn_storage.get_average_maps()
         out = []
@@ -197,21 +202,28 @@ class AttentionCatcher:
             for item in average_attentions[key]:
                 if item.shape[1] == target_tokens:
                     cross_maps = item.reshape(self.batch_size, -1,
-                                              self.target_resolution,
-                                              self.target_resolution,
+                                              self.target_map_resolution,
+                                              self.target_map_resolution,
                                               item.shape[-1]) # B, H, W, W, Fea
                     out.append(cross_maps)
         out = torch.cat(out, dim=1)
         out = out.sum(dim=1) / out.shape[1]
         return out
 
+    def attention_loss(self, stages: Tuple[str, ...]):
+        ca_map = self.extract_cross_attn_map(stages)
+        if self.checked != True:
+            warnings.warn(f"attention_loss: this loss is based on a hyposis that input is [clean, adv]"
+                      f"if you want to turn off this warning, set checked=True in initialize function")
+
     def reset_all(self):
         self.self_attn_loss.reset_all()
         self.attn_storage.reset_all()
         self.process_tracker.reset_all()
 
+    def __call__(self, *args, **kwargs):
+        self.capture_attention_map(*args, **kwargs)
+
 if __name__ == "__main__":
-    catcher = AttentionCatcher()
-    print(catcher._get_empty_store())
-    print(catcher.store_keyword())
+    # already tested in diff latent attack.
     print("pass validation")

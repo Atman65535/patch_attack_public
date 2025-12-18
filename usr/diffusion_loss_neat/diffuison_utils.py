@@ -14,7 +14,6 @@ import torch
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 import warnings
 
-
 # Part 1. Valid.
 
 SD_LATENT_SCALE = 0.18215
@@ -94,11 +93,10 @@ def cfg_predict_noise(model, latent_input, uncond_embeddings, cond_embeddings, t
     noise_pred = noise_uncond + guidance_scale * (noise_cond - noise_uncond)
     return noise_pred
 
-def ddim_denoise(model, latent_input, prompt, timestep, guidance_scale):
-    uncond_embed = build_unconditional_embeddings(model, latent_input.shape[0])
-    cond_embed = build_conditional_embeddings(model, latent_input.shape[0], prompt)
+def ddim_denoise(model, latent_input, uncond_embed, cond_embed, timestep, guidance_scale):
     noise = cfg_predict_noise(model, latent_input, uncond_embed, cond_embed, timestep, guidance_scale)
-
+    latent_out = model.scheduler.step(noise, timestep, latent_input)["prev_sample"]
+    return latent_out
 
 #########################################
         # This part only for dbg
@@ -135,8 +133,26 @@ def part1_dbg():
     print("pass validation")
 
 def part2_dbg():
-    pass
+    res = 256
+    batch_size = 2
+    dummy_image = _dummy_img([2, 3, res, res])
+    dummy_image = dummy_image.clamp(-1, 1)
+    model = build_diffusion_model()
+    model.scheduler.set_timesteps(1000)
+    latent = vae_encoder(dummy_image, model)
+    print(f"vae encoder latent shape {latent.shape}")
+    print("vae passed!")
 
+    uncond = build_unconditional_embeddings(model, batch_size)
+    print(uncond.shape)
+    print("\nuncond building pass!\n")
+
+    cond = build_conditional_embeddings(model, batch_size, "grass land with mud")
+    print(f"conditional shape {cond.shape}")
+    print("\ncond builder pass !\n")
+
+    ddim_denoise(model, latent, uncond, cond, 30, 4)
+    print("ddim denoise pass")
 
 
 if __name__ == "__main__":
