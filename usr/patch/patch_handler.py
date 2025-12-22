@@ -1,24 +1,20 @@
-from typing import Union, List, Tuple
+import warnings
+from typing import Union, List, Tuple, Optional
 import os.path as osp
 import pickle as pkl
 
-import torchvision.transforms as transforms
-import torchvision
 import torch
-import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 
-from mmengine import Config
-from mmengine.structures.pixel_data import PixelData
 
 
-class Patch(nn.Module):
+class Patch:
     # all values are from 0 to 1
     # RGB or Graysclae patch
     # Img' = transparency * Img + (I - transparency) * Mask
-    def __init__(self, patch_size, patch_mode, device="cuda"):
-        """__init__ _summary_ this class contains a trainable patch(nn.Module)
+    def __init__(self, patch_size, patch_mode):
+        """__init__ _summary_ this class contains a trainable patch
                     contains a mask (size x size), and mask
 
         Arguments:
@@ -31,19 +27,38 @@ class Patch(nn.Module):
         """
         self.size = patch_size
         self.mode = patch_mode
-        self.transparency = torch.ones(patch_size, patch_size, dtype=torch.float32, requires_grad=True, device=device)
+        device = torch.device("cuda", 0)
+        eps = 1e-3
+        self.transparency = torch.nn.Parameter(eps * torch.rand(3, patch_size, patch_size,
+                                             dtype=torch.float32,
+                                             requires_grad=True,
+                                             device=device))
         if self.mode == 'rgb':
             # optimizable
-            self.mask = torch.zeros(3, patch_size, patch_size, dtype=torch.float32, requires_grad=True, device=device)
+            self.mask = torch.nn.Parameter(eps * torch.rand(3, patch_size, patch_size,
+                                         dtype=torch.float32,
+                                         requires_grad=True,
+                                         device=device))
         elif self.mode == "gray_scale":
-            self.mask = torch.zeros(patch_size, patch_size, dtype=torch.float32, requires_grad=True, device=device)
+            self.mask = torch.nn.Parameter(eps * torch.rand(patch_size, patch_size,
+                                         dtype=torch.float32,
+                                         requires_grad=True,
+                                         device=device))
+            assert self.mask.ndim == 2, "Patch init: wrong init!"
         else:
             raise "expected patch mode is rgb or gray_scale"
 
+    @torch.enable_grad()
+    def patch_mapping_to01(self):
+        patch = self.mask ** 2 /( 1 + self.mask ** 2)
+        trans = self.transparency ** 2 / (1 + self.transparency ** 2)
+        return  patch, trans
+
+
 class PatchHandler:
-    '''
-    config : read "patch_config" segment and process it 
-    '''
+    """
+    config : read "patch_config" segment and process it
+    """
     def _preprocess_init(self, cfg):
         self.mean = torch.tensor(cfg.mean)
         self.std = torch.tensor(cfg.std)
@@ -66,22 +81,17 @@ class PatchHandler:
         self.patch_path = config.patch_path
         self.patch_size = config.patch_size
         self.patch_mode = config.patch_mode
-
+        # EOT configs
+        self.enable_eot = config.enable_eot
         self.rot_deg = config.rot_deg
         self.scale = config.scale
         assert type(self.scale) == tuple, f"expected to get tuple but get {type(self.scale)}"
         self.max_translate = config.max_translate
         self.location = config.location
-        self.patch_anchor = (0, 0) # h_start, w_start
+        self.patch_anchor: tuple # h_start, w_start
         self.ignore_label = config.ignore_label
 
         self._preprocess_init(self.cfg.model.data_preprocessor)
-
-        # self.eot_transforms = transforms.Compose([
-        #     transforms.RandomRotation(degrees=(-self.rot_deg, self.rot_deg)),
-        #     transforms.RandomAffine(degrees = 0, translate=self.translate),
-        #     transforms.RandomResizedCrop(size=self.patch_size, scale=self.scaling)
-        # ])
 
         if osp.exists(self.patch_path):
             self.patch = pkl.load(self.patch_path)
@@ -100,63 +110,72 @@ class PatchHandler:
         _summary_
         """
     
-    def _patch_preprocess(self):
-        """_patch_preprocess normalize the patch for input
-
-        Returns:
-            tensor -- transparency  [1, size, size]
-                      batched_patch [3, size, size] 
+    def get_01patch(self):
+        """
+        preprocess the patch. Just for classifier.
+        Normalize, from patch [0, 1]. std and mean are for [0, 1] patch
         """
         if self.patch_mode == 'rgb':
             patch = self.patch.mask
             if self.bgr_to_rgb:
-                patch = patch[[2, 1, 0], ...]
+                # patch = patch[[2, 1, 0], ...]
+                warnings.warn("check rgb or bgr here, we just want test gray scale")
         else:
             patch = torch.stack([self.patch.mask, 
-                                         self.patch.mask, 
+                                         self.patch.mask,
                                          self.patch.mask])
 
-        patch = (patch - self.mean) / self.std
-        transparency = self.patch.transparency.unsqueeze(0)
+        transparency = self.patch.transparency
         
         assert transparency.dim() == 3 and patch.dim() == 3, "wrong stack !"
 
         return transparency, patch
         
-    def apply_patch(self, input_batch:Tensor, gt_batch: Tensor):
+    def apply_patch(self, input_batch:Tensor, gt_batch: Tensor, classifier=False):
+        """
+        apply patch
+        if for classifier, return patched batch and patched ground truth
+        if for diffusion model, return clean patch and patched patch
+        """
         assert input_batch.dim() == 4, f"Expected 4D tensor [B, C, H, W], got {input_batch.dim()}D"
 
-        transparency, patch = self._patch_preprocess()
-        batch_transparency, batch_patch = self.batch_eot_transform(
-            patch, 
-            transparency, 
-            self.batch_size, 
-            self.rot_deg, 
-            self.scale, 
-            self.max_translate)
+        transparency, patch = self.get_01patch()
+        if classifier:
+            patch = (patch - self.mean) / self.std
+        if self.enable_eot:
+            batch_transparency, batch_patch = self.batch_eot_transform(
+                patch,
+                transparency,
+                self.batch_size,
+                self.rot_deg,
+                self.scale,
+                self.max_translate)
         
         h_start, w_start = self._get_location(self.cfg.crop_size)
         h_end = h_start + self.patch_size
         w_end = w_start + self.patch_size
-        
-        ret_batch = input_batch.clone()
+        # Img' = patch * trans + (1-trans) * img
+        patched_batch = input_batch.clone()
+        patched_batch[:, :, h_start:h_end, w_start:w_end] = \
+            input_batch[:, :, h_start:h_end, w_start:w_end] * (1 - transparency) + \
+            transparency * patch
 
-        ret_batch[:, :, h_start:h_end, w_start:w_end] = \
-            input_batch[:, :, h_start:h_end, w_start:w_end] * transparency + \
-            (torch.tensor(1) - batch_transparency) * batch_patch
+        if classifier:
+            patched_gt = gt_batch.clone()
+            patched_gt[:, h_start:h_end, w_start:w_end] = self.ignore_label
+            return patched_batch, patched_gt
+        else:
+            patched_batch = patched_batch[:, :, h_start:h_end, w_start:w_end]
+            clean_batch = input_batch[:, :, h_start:h_end, w_start:w_end]
+            gt_ret = gt_batch[:, h_start:h_end, w_start:w_end]
+            return clean_batch, patched_batch, gt_ret
 
-        batched_gt = gt_batch.clone()
-        batched_gt[:, h_start:h_end, w_start:w_end] = self.ignore_label
 
-        return ret_batch, batched_gt
-
-    #TODO here need refine
-    def update_patch(self, loss):
-        self.patch_optimizor.zero_grad()
-        loss.backward()
+    def patch_optim_step(self):
         self.patch_optimizor.step()
+        self.patch_optimizor.zero_grad()
 
-    def _get_location(self, size:Union[List, Tuple]) -> dict:
+    def _get_location(self, size:Union[List, Tuple]) -> List:
         
         location = self.location
         h, w = size
@@ -200,9 +219,9 @@ class PatchHandler:
         tx = (torch.rand(batch_size, device=device) * 2 - 1) * max_translate
         ty = (torch.rand(batch_size, device=device) * 2 - 1) * max_translate
         # affine [B, H, W]
-        affine = self._make_affine_matrix(batch_size, angle, scale, tx, ty, device=device)
+        affine = self._make_affine_matrix(batch_size, angle, scale, tx, ty)
         grid = F.affine_grid(theta=affine,
-                             size=(batch_size, C, p, p),
+                             size=[batch_size, C, p, p],
                              align_corners=False)
         
         copied_patch = patch.unsqueeze(0).repeat(batch_size, 1, 1, 1)
@@ -231,8 +250,7 @@ class PatchHandler:
                             angle_deg: Union[float, torch.Tensor],
                             scale: Union[float, torch.Tensor],
                             tx: Union[float, torch.Tensor],
-                            ty: Union[float, torch.Tensor],
-                            device="cuda") -> Tensor:
+                            ty: Union[float, torch.Tensor]) -> Tensor:
         """_make_affine_matrix return a batch of affine matrix[B, 1, H, W]
 
         Arguments:
@@ -244,12 +262,12 @@ class PatchHandler:
 
         Returns:
             Tensor -- affine matrix [B, 1, H, W]
-        """        
+        """
+        device = torch.device("cuda", 0)
         if type(angle_deg) == float:
             angle_deg = torch.tensor(angle_deg, dtype=torch.float32, device=device)
 
         # assert type(angle_deg) == torch.Tensor
-
         affine = torch.zeros(batch_size, 2, 3, device=device, dtype=torch.float32)
         rad = torch.deg2rad(angle_deg)
 

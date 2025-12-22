@@ -10,8 +10,6 @@ from typing import Tuple
 
 import torch
 
-from UNet_patch import register_attention_control, reset_attention_control
-from diffuison_utils import ddim_denoise
 
 class SelfAttentionLoss:
     """
@@ -190,7 +188,6 @@ class AttentionCatcher:
             self.process_tracker.update_after_unet() # reset counter
             self.attn_storage.update_after_unet()
             # reset dynamic storage and store this layer
-        return
 
     def extract_cross_attn_map(self, stages: Tuple[str, ...]):
         target_tokens = self.target_map_tokens

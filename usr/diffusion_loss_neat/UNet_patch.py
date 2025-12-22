@@ -8,8 +8,8 @@ Description:
 from typing import Optional
 import torch
 
-from diffuison_utils import build_diffusion_model
-from ddim_reverse import ddim_reverse
+from .diffuison_utils import build_diffusion_model
+from .ddim_reverse import ddim_reverse
 
 def register_attention_control(model, controller):
     def ca_forward(self, place_in_unet):
@@ -73,7 +73,7 @@ def register_attention_control(model, controller):
 
             sim = torch.einsum("b i d, b j d -> b i j", query, key) * self.scale
             attn = sim.softmax(dim=-1)
-            attn = controller(attn, is_cross, place_in_unet)
+            controller(attn, is_cross, place_in_unet)
             out = torch.einsum("b i j, b j d -> b i d", attn, value)
 
             def reshape_batch_dim_to_heads(tensor):
