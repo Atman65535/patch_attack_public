@@ -13,7 +13,6 @@ Dataset calss derived from BaseSegDataset
 
 @DATASETS.register_module()
 class Rellis3DDataset(BaseSegDataset):
-    # TODO finish the metainfo here
     METAINFO = dict(
         ## rellis difinition refer to label2color.ipynb
         color_palette={

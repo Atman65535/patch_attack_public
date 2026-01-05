@@ -9,6 +9,9 @@ import logging
 import torch
 
 class LossHandler:
+    """ 
+    这就是个log类，输入loss，会在每次调用它的时候自动打log，其余暂时没有任何作用
+    """
     def __init__(self, cfg):
         """
         Args:

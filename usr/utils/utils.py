@@ -7,14 +7,16 @@ from mmengine.config import Config
 from mmseg.structures import SegDataSample
 
 class Utils:
-    
+    # 这几个类都是为mmlab的API服务，把mmlab的各种数据结构换成tensor
     @staticmethod
     def parse_data_samples(data: List[SegDataSample],
                               gt_sem=False,
                               pred=False,
                               logits=False,):
         """parse_data_samples from List[SegDataSample] to Tensor
-            _, pred, _ = Utils.parse_data_samples(data, pred=True)
+
+        Usage:    _, pred, _ = Utils.parse_data_samples(data, pred=True)
+
         Arguments:
             data {List[SegDataSample]} -- _description_
 
@@ -66,6 +68,8 @@ class Utils:
     @staticmethod
     def parse_model_output(data:List[SegDataSample]):
         """parse_model_output from mmlab type to universal tensor type
+        
+        Usage:
             pred, logits = Utils.parse_model_output(res)
 
         here all tensors are on cuda and the output will on cuda as well

@@ -18,7 +18,7 @@ from usr.utils import Utils, LossHandler
 
 def build_model(cfg):
     """build_model build from MMLab APIs
-
+    先build一个classifier模型
     Arguments:
         cfg {ConfigDict} -- 
 
@@ -28,7 +28,7 @@ def build_model(cfg):
     model = MODELS.build(cfg).cuda()
     model.eval()
     for param in model.parameters():
-        param.requires_grad_(False)
+        param.requires_grad_(False)  # freeze
     preprocessor = model.data_preprocessor
     return model, preprocessor
 
@@ -49,7 +49,7 @@ def predict(model, data):
     return pred, logits
 
 def classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch):
-    preprocessed = preprocessor(batch)
+    preprocessed = preprocessor(batch) # 这个是模型自带的processor
     data = preprocessed['inputs']
     data_gt, _, _ = Utils.parse_data_samples(preprocessed['data_samples'], gt_sem=True)
     gt_ret = data_gt.clone()
@@ -75,7 +75,7 @@ def main():
     data_loader = Runner.build_dataloader(cfg.train_dataloader)
     diffusion_loss_pipeline = DiffLossTools(cfg.diffusion_config)
     # train iter
-    loss_iter = cfg.loss_back_iter
+    loss_iter = cfg.loss_back_iter # 和下面的cnt一起用于梯度累积，暂时没有用上
     loss_iter_cnt = 0
     loss = LossHandler(cfg.weight_config)
     for e in range(cfg.epochs):
@@ -86,7 +86,8 @@ def main():
             # preprocess: normalize and apply patch
             classify_loss, gt_batch = classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch)
             diff_batch = diffusion_loss_pipeline.image_preprocessor01(batch['inputs'], 1024, 1024)
-            clean_batch, adv_batch, gt = patch_handler.apply_patch(diff_batch, gt_batch, False)
+            clean_batch, adv_batch, gt = patch_handler.apply_patch(diff_batch, gt_batch, classifier=False)
+            # -1 to 1 img
             clean_batch = clean_batch * 2.0 - 1.0
             adv_batch = adv_batch * 2.0 - 1.0
             loss.update(classifier=classify_loss)
@@ -98,7 +99,7 @@ def main():
                 loss.update(self_attn=self_loss, cross=cross_loss)
                 lss = lss +self_loss * loss.self_attn_weight + cross_loss * loss.cross_attn_weight
            
-                
+            # 这块已经糊了，随便写的梯度累积（实则并没有累积）   
             lss.backward()
             patch_handler.patch_optim_step()
             loss.log(e)

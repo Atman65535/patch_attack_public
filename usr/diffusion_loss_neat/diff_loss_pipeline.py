@@ -22,6 +22,7 @@ def _get_top2_labels(gt_map: torch.Tensor,
                      ignore_label=255,
                      thres=0.5):
     """
+    从gt_map中获得标签prompt
     Args:
         gt_map: gt_map of current image, which should be valid
         through all pixels.
@@ -53,6 +54,9 @@ def _get_top2_labels(gt_map: torch.Tensor,
 
 
 class DiffLossTools:
+    """ 
+    主要对接主程序的类，包括整个加噪去噪得到loss的流程
+    """
     def __init__(self,
                  cfg: ConfigDict):
         if cfg.label_dict is None:
@@ -77,7 +81,7 @@ class DiffLossTools:
         diffusion_image_checker(clean, resolution=self.resolution, strict=True)
         diffusion_image_checker(adv, resolution=self.resolution, strict=True)
 
-        cond_prompt = self._get_prompt_from_gt(gt)
+        cond_prompt = self._get_prompt_from_gt(gt) # conditional prompt
         latent_clean = ddim_reverse(clean,
                                     cond_prompt,
                                     self.model,
@@ -95,21 +99,28 @@ class DiffLossTools:
                                 intermediate_steps=self.intermediate_steps,
                                 resolution=self.resolution)
         token_len = len(self.model.tokenizer.encode(cond_prompt))
+        # unconditional embeddings and conditional one.
         uncond_emb = build_unconditional_embeddings(self.model, self.batch_size * 2 )
         cond_emb = build_conditional_embeddings(self.model, self.batch_size * 2, cond_prompt)
         assert latent_adv.ndim == 4, "invalid latent dimension!"
         latent = torch.cat([latent_clean, latent_adv])
+        # accumulate attention maps
         register_attention_control(self.model, self.attn_catcher)
         for ind, time in enumerate(self.model.scheduler.timesteps[self.num_inference_steps - self.intermediate_steps:]):
             latent = ddim_denoise(self.model, latent, uncond_emb, cond_emb, time, self.guidance_scale)
         reset_attention_control(self.model)
+
         self_attn_loss = self.attn_catcher.self_attn_loss.loss
         cross_map = self.attn_catcher.extract_cross_attn_map(("up", "down"))[1:token_len - 1]
         self.attn_catcher.reset_all()
+
         cross_attn_loss = cross_map.var()
         return self_attn_loss, cross_attn_loss
 
     def _get_prompt_from_gt(self, gt):
+        """
+        从gt_map中获取prompt
+        """
         top1, top2 = _get_top2_labels(gt)
         if top2:
             return self.label_dict[top1] + "and" + self.label_dict[top2]
@@ -118,6 +129,7 @@ class DiffLossTools:
     @staticmethod
     def image_preprocessor01(list_of_raw_imgs: List[torch.Tensor], W, H, pad_val=0.0):
         """
+        手动实现的预处理类，主要是希望预处理行为可控
         input List[ (3, H, W), ...]
         Returns: Batch, (B, C, H, W)
         """

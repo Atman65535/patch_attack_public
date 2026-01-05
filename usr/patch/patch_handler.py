@@ -10,11 +10,12 @@ import torch.nn.functional as F
 
 
 class Patch:
-    # all values are from 0 to 1
-    # RGB or Graysclae patch
+    # RGB or Grayscale patch
     # Img' = transparency * Img + (I - transparency) * Mask
     def __init__(self, patch_size, patch_mode):
-        """__init__ _summary_ this class contains a trainable patch
+        """
+        Patch 本体类，包含参数矩阵和映射方法
+        __init__ _summary_ this class contains a trainable patch
                     contains a mask (size x size), and mask
 
         Arguments:
@@ -28,18 +29,19 @@ class Patch:
         self.size = patch_size
         self.mode = patch_mode
         device = torch.device("cuda", 0)
+        # 初始化，随机极小值初始化，在这个范围内梯度比较小，不清楚这块是不是得改
         eps = 1e-3
         self.transparency = torch.nn.Parameter(eps * torch.rand(3, patch_size, patch_size,
                                              dtype=torch.float32,
                                              requires_grad=True,
                                              device=device))
-        if self.mode == 'rgb':
+        if self.mode == 'rgb': # 3 channels
             # optimizable
             self.mask = torch.nn.Parameter(eps * torch.rand(3, patch_size, patch_size,
                                          dtype=torch.float32,
                                          requires_grad=True,
                                          device=device))
-        elif self.mode == "gray_scale":
+        elif self.mode == "gray_scale": # 1 channel
             self.mask = torch.nn.Parameter(eps * torch.rand(patch_size, patch_size,
                                          dtype=torch.float32,
                                          requires_grad=True,
@@ -50,6 +52,7 @@ class Patch:
 
     @torch.enable_grad()
     def patch_mapping_to01(self):
+        # 暂时使用的是平方映射，不知道有没有更好的方案
         patch = self.mask ** 2 /( 1 + self.mask ** 2)
         trans = self.transparency ** 2 / (1 + self.transparency ** 2)
         return  patch, trans
@@ -57,9 +60,10 @@ class Patch:
 
 class PatchHandler:
     """
-    config : read "patch_config" segment and process it
+    config : read "patch_config" and process it
     """
     def _preprocess_init(self, cfg):
+        # 这个纯粹init里面写不下了，放到上面了
         self.mean = torch.tensor(cfg.mean)
         self.std = torch.tensor(cfg.std)
         self.pad_val = cfg.pad_val
@@ -112,6 +116,7 @@ class PatchHandler:
     
     def get_01patch(self):
         """
+        为了classifier写的，映射patch到01区间
         preprocess the patch. Just for classifier.
         Normalize, from patch [0, 1]. std and mean are for [0, 1] patch
         """
@@ -135,6 +140,9 @@ class PatchHandler:
         
     def apply_patch(self, input_batch:Tensor, gt_batch: Tensor, classifier=False):
         """
+        真正施加patch的接口函数
+        如果是给classifier的，返回贴过补丁的batch和相应gt
+        如果是给Diffusion用的，返回干净的patch和补丁patch
         apply patch
         if for classifier, return patched batch and patched ground truth
         if for diffusion model, return clean patch and patched patch
@@ -144,6 +152,7 @@ class PatchHandler:
         transparency, patch = self.get_01patch()
         if classifier:
             patch = (patch - self.mean) / self.std
+        # EOT逻辑暂时不启动，不过写了一部分
         if self.enable_eot:
             batch_transparency, batch_patch = self.batch_eot_transform(
                 patch,
@@ -158,6 +167,7 @@ class PatchHandler:
         w_end = w_start + self.patch_size
         # Img' = patch * trans + (1-trans) * img
         patched_batch = input_batch.clone()
+        # 正常这里应该贴了补丁，图像的max小于等于原来的max，报错了可能是patch有问题
         max0 = torch.max(input_batch[:, :, h_start:h_end, w_start:w_end]);
         patched_batch[:, :, h_start:h_end, w_start:w_end] = \
             input_batch[:, :, h_start:h_end, w_start:w_end] * (1 - transparency) + \
@@ -194,6 +204,7 @@ class PatchHandler:
         self.patch_anchor = ret_val
         return ret_val
     
+    ###################### EOT related ##########################
     def batch_eot_transform(
             self,
             patch: Tensor, # [3, size, size]

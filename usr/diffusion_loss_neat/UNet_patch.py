@@ -11,6 +11,7 @@ import torch
 from .diffuison_utils import build_diffusion_model
 from .ddim_reverse import ddim_reverse
 
+# 这个基本是移植的，自己写的hijack太复杂了还不如这个直观
 def register_attention_control(model, controller):
     def ca_forward(self, place_in_unet):
         def forward(

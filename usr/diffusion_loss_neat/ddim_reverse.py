@@ -65,8 +65,10 @@ def ddim_reverse(original_image: torch.Tensor,
                  resolution=256):
     """
     This function transfer an RGB BCHW square image to latent space, with ddim reverse.
+    能够将一张图像反向加噪到潜空间指定时间步
     Args:
         batch_size: Batch size of image, maybe 1 for ordinary use, but 2 [clean, adv] for attack
+        这个batchsize相当的混，主程序的batch是1，对抗攻击一个加patch一个干净是2，CFG 推理又是4
         num_inference_steps: this name align to diffusion pipeline.
         guidance_scale: for CFG process, always 3-10
         intermediate_steps: steps for denoise and attention map calculation
