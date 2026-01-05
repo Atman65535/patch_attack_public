@@ -86,14 +86,14 @@ class DiffLossTools:
                                     guidance_scale=self.guidance_scale,
                                     intermediate_steps=self.intermediate_steps,
                                     resolution=self.resolution)
-        latent_adv = ddim_reverse_no_grad(adv,
-                                          cond_prompt,
-                                          self.model,
-                                          batch_size=1,
-                                          num_inference_steps=self.num_inference_steps,
-                                          guidance_scale=self.guidance_scale,
-                                          intermediate_steps=self.intermediate_steps,
-                                          resolution=self.resolution)
+        latent_adv = ddim_reverse(adv,
+                                cond_prompt,
+                                self.model,
+                                batch_size=1,
+                                num_inference_steps=self.num_inference_steps,
+                                guidance_scale=self.guidance_scale,
+                                intermediate_steps=self.intermediate_steps,
+                                resolution=self.resolution)
         token_len = len(self.model.tokenizer.encode(cond_prompt))
         uncond_emb = build_unconditional_embeddings(self.model, self.batch_size * 2 )
         cond_emb = build_conditional_embeddings(self.model, self.batch_size * 2, cond_prompt)

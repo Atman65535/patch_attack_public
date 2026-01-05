@@ -6,6 +6,7 @@ Description:
     
 """
 import logging
+import torch
 
 class LossHandler:
     def __init__(self, cfg):
@@ -27,23 +28,22 @@ class LossHandler:
         )
 
     def reset(self):
-        self.loss = 0
         self.self_loss = 0
         self.cross_loss = 0
         self.classifier_loss = 0
 
-    def update(self, classifier=0, self_attn=0, cross=0):
-        self.loss += self.classifier_weight * classifier + self.self_attn_weight * self_attn + self.cross_attn_weight * cross
-        self.classifier_loss += self.classifier_weight * classifier
-        self.self_loss += self.self_attn_weight * self_attn
-        self.cross_loss += self.cross_attn_weight * cross
-        self.loss.backward()
-        self.loss = 0
+    def update(self, classifier=None, self_attn=None, cross=None):
+        device = torch.device("cuda", 0)
+        current_loss = torch.tensor(0.0, device=device)
+        if classifier is not None:
+            self.classifier_loss += self.classifier_weight * classifier.item()
+        if self_attn is not None:
+            self.self_loss += self.self_attn_weight * self_attn.item()
+        if cross is not None:
+            self.cross_loss += self.cross_attn_weight * cross.item()
+
     def log(self, epoch):
-        logging.info(f"epoch : {epoch}"
-                     f"classifier_loss : {self.classifier_loss}"
-                     f"self_attn_loss : {self.self_loss}"
-                     f"cross_attn_loss : {self.cross_loss}")
+        logging.info(f"epoch : {epoch} \nclassifier_loss : {self.classifier_loss}\nself_attn_loss : {self.self_loss}\ncross_attn_loss : {self.cross_loss}")
 
 if __name__ == "__main__":
     print("pass validation")

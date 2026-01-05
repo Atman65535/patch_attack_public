@@ -17,7 +17,7 @@ cwd = os.getcwd()
 patch_path = os.path.join(cwd, "usr/patch/patch.pat")
 
 epochs = 30
-lr = 0.001
+lr = 0.005
 ignore_label = 255
 batch_size = 2
 loss_back_iter = 10 # batchs
@@ -27,8 +27,8 @@ patch_size = 256
 
 weight_config = dict(
     classifier = 1.0,
-    self = 1.0,
-    cross = 1.0,
+    self = 2.0,
+    cross = 150.0,
 )
 
 train_dataloader = dict(batch_size=batch_size,
@@ -63,10 +63,10 @@ patch_metrics = dict(
         weight = -1.0,
     ),
     self_attention_loss = dict(
-        weight = 1.0,
+        weight = 50.0,
     ),
     cross_attention_loss = dict(
-        weight = 1.0,
+        weight = 100.0,
     ),
 )
 diffusion_config = dict(

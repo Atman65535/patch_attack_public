@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 import os.path as osp
+import torch
+import pickle
 from typing import List, Dict, Tuple, Optional, Union
 
 from mmengine.runner import Runner
@@ -60,6 +62,8 @@ def classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch
     return classify_loss, gt_ret
 
 def main():
+    torch.autograd.set_detect_anomaly(True)
+
     # cfg init
     config_file = "usr/configs/exp/patch_config.py"
     cfg = Utils.config_preprocess(config_file)
@@ -77,6 +81,7 @@ def main():
     for e in range(cfg.epochs):
         # contains ['pred_sem_seg', 'seg_logits']
         for _, batch in enumerate(data_loader, 0):
+            lss = 0
             loss_iter_cnt += 1
             # preprocess: normalize and apply patch
             classify_loss, gt_batch = classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch)
@@ -85,15 +90,23 @@ def main():
             clean_batch = clean_batch * 2.0 - 1.0
             adv_batch = adv_batch * 2.0 - 1.0
             loss.update(classifier=classify_loss)
+            lss = classify_loss * loss.classifier_weight
             for clean, adv, gt in zip(clean_batch, adv_batch, gt):
                 clean = clean.unsqueeze(0)
                 adv = adv.unsqueeze(0)
                 self_loss, cross_loss = diffusion_loss_pipeline.get_loss(clean, adv, gt)
                 loss.update(self_attn=self_loss, cross=cross_loss)
-            if loss_iter_cnt == loss_iter:
-                patch_handler.patch_optim_step()
-                loss.log(e)
-                loss.reset()
+                lss = lss +self_loss * loss.self_attn_weight + cross_loss * loss.cross_attn_weight
+           
+                
+            lss.backward()
+            patch_handler.patch_optim_step()
+            loss.log(e)
+            loss.reset()
+
+        # save
+        os.makedirs("./saved_patches", exist_ok=True)
+        pickle.dump(patch_handler, open(osp.join("./saved_patches", f"patch_epoch_{e}.pat"), "wb"))
 
 if __name__ == "__main__":
 

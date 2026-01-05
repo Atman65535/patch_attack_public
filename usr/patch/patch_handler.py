@@ -115,17 +115,19 @@ class PatchHandler:
         preprocess the patch. Just for classifier.
         Normalize, from patch [0, 1]. std and mean are for [0, 1] patch
         """
+        patch, trans = self.patch.patch_mapping_to01()
         if self.patch_mode == 'rgb':
             patch = self.patch.mask
-            if self.bgr_to_rgb:
-                # patch = patch[[2, 1, 0], ...]
-                warnings.warn("check rgb or bgr here, we just want test gray scale")
+            raise NotImplementedError("rgb is not supported yet,")
+            # if self.bgr_to_rgb:
+            #     # patch = patch[[2, 1, 0], ...]
+            #     warnings.warn("check rgb or bgr here, we just want test gray scale")
         else:
-            patch = torch.stack([self.patch.mask, 
-                                         self.patch.mask,
-                                         self.patch.mask])
+            patch = torch.stack([patch, 
+                                 patch, 
+                                 patch])
 
-        transparency = self.patch.transparency
+        transparency = trans
         
         assert transparency.dim() == 3 and patch.dim() == 3, "wrong stack !"
 
@@ -156,9 +158,14 @@ class PatchHandler:
         w_end = w_start + self.patch_size
         # Img' = patch * trans + (1-trans) * img
         patched_batch = input_batch.clone()
+        max0 = torch.max(input_batch[:, :, h_start:h_end, w_start:w_end]);
         patched_batch[:, :, h_start:h_end, w_start:w_end] = \
             input_batch[:, :, h_start:h_end, w_start:w_end] * (1 - transparency) + \
             transparency * patch
+        max1 = torch.max(patched_batch[:, :, h_start:h_end, w_start:w_end]);
+        if (max1 > max0):
+            raise ValueError("patch application: the max value become larger after patch application!")
+        
 
         if classifier:
             patched_gt = gt_batch.clone()
