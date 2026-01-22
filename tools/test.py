@@ -6,6 +6,10 @@ import os.path as osp
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
+
 
 # TODO: support fuse_conv_bn, visualization, and format_only
 def parse_args():

@@ -193,9 +193,11 @@ class AttentionCatcher:
             self.attn_storage.update_after_unet()
             # reset dynamic storage and store this layer
 
-    def extract_cross_attn_map(self, stages: Tuple[str, ...]):
+    def extract_attn_map(self, stages: Tuple[str, ...], is_cross=True):
+        """ stages: 'up', 'mid', 'down'
+            is_cross: bool, indicates that if we want cross attention
+        """
         target_tokens = self.target_map_tokens
-        is_cross = True
         average_attentions = self.attn_storage.get_average_maps()
         out = []
         for stage in stages:

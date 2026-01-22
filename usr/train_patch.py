@@ -1,87 +1,53 @@
-import argparse
-import logging
+# system and tools
 import os
 import os.path as osp
-import torch
-import pickle
 from typing import List, Dict, Tuple, Optional, Union
+import argparse
+import logging
+import pickle
 
-from mmengine.runner import Runner
+import torch
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+import numpy as np
 
-from mmseg.registry import  MODELS
-from mmseg.structures import SegDataSample
+import mmseg.apis
+from mmengine import Config
+
 from usr.diffusion_loss_neat.diff_loss_pipeline import DiffLossTools
-
+from usr.classifier_pipeline import Classifier
 from usr.patch import PatchHandler
 from usr.metrics import PatchMetrics
 from usr.utils import Utils, LossHandler
-
-def build_model(cfg):
-    """build_model build from MMLab APIs
-    先build一个classifier模型
-    Arguments:
-        cfg {ConfigDict} -- 
-
-    Returns:
-        EncoderDecoder -- just type, refer to mmseg.model.encoderdecoder
-    """    
-    model = MODELS.build(cfg).cuda()
-    model.eval()
-    for param in model.parameters():
-        param.requires_grad_(False)  # freeze
-    preprocessor = model.data_preprocessor
-    return model, preprocessor
-
-def predict(model, data):
-    """predict predict using model
-
-    Arguments:
-        model {encoderdecoder}
-        data {tensor} -- 
-
-    Returns:
-        tensor -- tensor parsed from mmlab data sample
-    """    
-    res : List[SegDataSample]
-    res = model.predict(data) 
-
-    pred, logits = Utils.parse_model_output(res)
-    return pred, logits
-
-def classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch):
-    preprocessed = preprocessor(batch) # 这个是模型自带的processor
-    data = preprocessed['inputs']
-    data_gt, _, _ = Utils.parse_data_samples(preprocessed['data_samples'], gt_sem=True)
-    gt_ret = data_gt.clone()
-    #**********Attack***********#
-    data_patched, gt_patched = patch_handler.apply_patch(data, data_gt, classifier=True)
-    pred, logits = predict(model, data_patched)
-
-    # gt_patched or data_gt? if the patch is invisible, we should use data_gt. otherwise use gt_patched.
-    classify_loss = patch_metrics.classify_loss(logits, data_gt, patch_handler.patch_anchor)
-    return classify_loss, gt_ret
+from usr.utils import Visualizer
+from usr.datasets import Rellis3DDataset
 
 def main():
     torch.autograd.set_detect_anomaly(True)
-
+    vis = Visualizer()
     # cfg init
-    config_file = "usr/configs/exp/patch_config.py"
-    cfg = Utils.config_preprocess(config_file)
-    model, preprocessor = build_model(cfg.model)
+    config_file = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/exp/patch_config.py"
+    cfg = Config.fromfile(config_file)
+    classifier = Classifier(cfg)
     # patch associated
-    patch_handler = PatchHandler(cfg)
-    patch_metrics = PatchMetrics(cfg)
+    # patch_handler = PatchHandler(cfg)
+    patch_handler = PatchHandler(cfg.patch_handler) # new version
+    patch_metrics = PatchMetrics()
     # data associated
-    data_loader = Runner.build_dataloader(cfg.train_dataloader)
+    # todo add to config file
+    dataset = Rellis3DDataset(crop_sizeHW=(1024, 1024))
+    data_loader = torch.utils.data.DataLoader(dataset,batch_size=4)
+
+
     diffusion_loss_pipeline = DiffLossTools(cfg.diffusion_config)
     # train iter
     loss_iter = cfg.loss_back_iter # 和下面的cnt一起用于梯度累积，暂时没有用上
     loss_iter_cnt = 0
-    loss = LossHandler(cfg.weight_config)
+    #loss = LossHandler(cfg.weight_config)
     for e in range(cfg.epochs):
         # contains ['pred_sem_seg', 'seg_logits']
         for _, batch in enumerate(data_loader, 0):
-            lss = 0
+            total_loss = 0
             loss_iter_cnt += 1
             # preprocess: normalize and apply patch
             classify_loss, gt_batch = classifier_pipeline(patch_handler, model, patch_metrics, preprocessor, batch)
@@ -91,16 +57,16 @@ def main():
             clean_batch = clean_batch * 2.0 - 1.0
             adv_batch = adv_batch * 2.0 - 1.0
             loss.update(classifier=classify_loss)
-            lss = classify_loss * loss.classifier_weight
+            total_loss = classify_loss * loss.classifier_weight
             for clean, adv, gt in zip(clean_batch, adv_batch, gt):
                 clean = clean.unsqueeze(0)
                 adv = adv.unsqueeze(0)
                 self_loss, cross_loss = diffusion_loss_pipeline.get_loss(clean, adv, gt)
                 loss.update(self_attn=self_loss, cross=cross_loss)
-                lss = lss +self_loss * loss.self_attn_weight + cross_loss * loss.cross_attn_weight
+                total_loss = total_loss +self_loss * loss.self_attn_weight + cross_loss * loss.cross_attn_weight
            
             # 这块已经糊了，随便写的梯度累积（实则并没有累积）   
-            lss.backward()
+            total_loss.backward()
             patch_handler.patch_optim_step()
             loss.log(e)
             loss.reset()

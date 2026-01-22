@@ -1,4 +1,4 @@
-from .patch_handler import PatchHandler
+from .patch_handler_v2 import PatchHandler
 
 __all__ = [
     "PatchHandler"

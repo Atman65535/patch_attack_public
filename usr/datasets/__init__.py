@@ -1,4 +1,4 @@
-from .rellis3d import Rellis3DDataset
+from .rellis_pytorch import Rellis3DDataset
 
 __all__ = [
     "Rellis3DDataset"

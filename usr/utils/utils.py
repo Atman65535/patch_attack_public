@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Tuple, Union
 
 import torch
@@ -64,29 +65,32 @@ class Utils:
             [i.gt_sem_seg.data for i in data_samples], dim=0) 
         
         return input_batch, gt_sem_seg
-    
-    @staticmethod
-    def parse_model_output(data:List[SegDataSample]):
-        """parse_model_output from mmlab type to universal tensor type
-        
-        Usage:
-            pred, logits = Utils.parse_model_output(res)
 
-        here all tensors are on cuda and the output will on cuda as well
-        Arguments:
-            data {List[SegDataSample]} -- data after model.predict
+    # Aborted
+    # @staticmethod
+    # def parse_model_output(data:List[SegDataSample]):
+    #     """parse_model_output from mmlab type to universal tensor type
+    #
+    #     Usage:
+    #         pred, logits = Utils.parse_model_output(res)
+    #
+    #     here all tensors are on cuda and the output will on cuda as well
+    #     Arguments:
+    #         data {List[SegDataSample]} -- data after model.predict
+    #
+    #     Returns:
+    #         tensor -- literally
+    #     """
+    #     warnings.warn("aborted. Use classifier pipeline instead")
+    #     pred_sem_seg = torch.stack(
+    #         [i.pred_sem_seg.data for i in data], dim=0)
+    #     seg_logits = torch.stack(
+    #         [i.seg_logits.data for i in data], dim=0)
+    #
+    #     return pred_sem_seg, seg_logits
 
-        Returns:
-            tensor -- literally
-        """        
-        pred_sem_seg = torch.stack(
-            [i.pred_sem_seg.data for i in data], dim=0)
-        seg_logits = torch.stack(
-            [i.seg_logits.data for i in data], dim=0)
-        
-        return pred_sem_seg, seg_logits
-    
-    @staticmethod
-    def config_preprocess(cfg_file:str):
-        cfg = Config.fromfile(cfg_file)
-        return cfg
+    # Aborted
+    # @staticmethod
+    # def config_preprocess(cfg_file:str):
+    #     cfg = Config.fromfile(cfg_file)
+    #     return cfg

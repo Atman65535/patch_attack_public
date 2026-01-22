@@ -8,6 +8,7 @@ Description:
 import torch
 from typing import List
 import torch.nn.functional as F
+from ..utils import Visualizer
 
 from mmengine import ConfigDict
 
@@ -74,6 +75,7 @@ class DiffLossTools:
         self.guidance_scale = cfg.guidance_scale
         self.intermediate_steps = cfg.intermediate_steps
         self.model = build_diffusion_model()
+        self.vis = Visualizer()
 
     def get_loss(self, clean, adv, gt):
         self.attn_catcher.reset_all()
@@ -111,10 +113,14 @@ class DiffLossTools:
         reset_attention_control(self.model)
 
         self_attn_loss = self.attn_catcher.self_attn_loss.loss
-        cross_map = self.attn_catcher.extract_cross_attn_map(("up", "down"))[1:token_len - 1]
+        adv_cross_map = self.attn_catcher.extract_attn_map(("up", "down"), is_cross=True)[1, :, :, 1:token_len - 1]
+        clean_self_map, adv_self_map = self.attn_catcher.extract_attn_map(stages=("up", "down"), is_cross=False)
+        self.vis.show_cross_attention_map(adv_cross_map, "cross")
+        self.vis.show_self_attention_map(adv_self_map, "advself")
+        self.vis.show_self_attention_map(clean_self_map,"cleanself")
         self.attn_catcher.reset_all()
 
-        cross_attn_loss = cross_map.var()
+        cross_attn_loss = adv_cross_map.var()
         return self_attn_loss, cross_attn_loss
 
     def _get_prompt_from_gt(self, gt):
@@ -123,7 +129,7 @@ class DiffLossTools:
         """
         top1, top2 = _get_top2_labels(gt)
         if top2:
-            return self.label_dict[top1] + "and" + self.label_dict[top2]
+            return self.label_dict[top1] + " and " + self.label_dict[top2]
         return self.label_dict[top1]
 
     @staticmethod
