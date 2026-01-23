@@ -1,6 +1,6 @@
 """
 File: ElegantLogger.py
-Author: Atman & Gemini
+Author: Gemini & Atman
 Date: 1/23/26
 Description:
     
@@ -10,6 +10,7 @@ import time
 import os
 from collections import defaultdict
 import torch
+#TODO add loss curve visualize method!
 
 class ElegantLogger:
     """
@@ -18,18 +19,16 @@ class ElegantLogger:
     """
     def __init__(self, save_path="logs"):
         os.makedirs(save_path, exist_ok=True)
-        self.log_file = os.path.join(save_path, f"exp_{time.strftime('%m%d_%H%M')}.log")
-        self.metrics = defaultdict(float)
+        self.log_file = os.path.join(save_path, f"exp_{time.strftime('%m.%d_%H:%M')}.log")
+        self.loss_val = defaultdict(float)
 
     def update(self, **kwargs):
-        """支持一次传入多个loss，例如 logger.update(classifier=0.5, self_attn=0.2)"""
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
                 v = v.detach().item() # 彻底切断计算图，防止显存泄漏
-            self.metrics[k] += v
+            self.loss_val[k] += v
 
     def flush(self, epoch, step=None):
-        """格式化输出并重置累加器"""
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log_str = f"[{timestamp}] Epoch: {epoch:03d}"
         if step is not None:
@@ -38,7 +37,7 @@ class ElegantLogger:
         # 拼接三种 Loss
         loss_details = []
         for name in ['classifier_loss', 'self_loss', 'cross_loss']:
-            avg_val = self.metrics[name]
+            avg_val = self.loss_val[name]
             loss_details.append(f"{name}: {avg_val:.4f}")
 
         log_str += " | " + " | ".join(loss_details)
@@ -51,7 +50,7 @@ class ElegantLogger:
             f.write(log_str + "\n")
 
         # 3. 重置累加器
-        self.metrics.clear()
+        self.loss_val.clear()
 
 if __name__ == "__main__":
     logger = ElegantLogger()
