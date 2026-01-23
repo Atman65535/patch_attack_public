@@ -161,8 +161,8 @@ class MAE(BEiT):
             param.div_(math.sqrt(2.0 * layer_id))
 
         for layer_id, layer in enumerate(self.layers):
-            rescale(layer.attn.proj.weight.data, layer_id + 1)
-            rescale(layer.ffn.layers[1].weight.data, layer_id + 1)
+            rescale(layer.attn.proj.loss_weight.data, layer_id + 1)
+            rescale(layer.ffn.layers[1].loss_weight.data, layer_id + 1)
 
     def init_weights(self):
 

@@ -434,7 +434,7 @@ class IterativeDecodeHead(BaseDecodeHead):
         """Forward function."""
         feats = self.kernel_generate_head._forward_feature(inputs)
         sem_seg = self.kernel_generate_head.cls_seg(feats)
-        seg_kernels = self.kernel_generate_head.conv_seg.weight.clone()
+        seg_kernels = self.kernel_generate_head.conv_seg.loss_weight.clone()
         seg_kernels = seg_kernels[None].expand(
             feats.size(0), *seg_kernels.size())
 

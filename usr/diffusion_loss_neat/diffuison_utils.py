@@ -43,17 +43,15 @@ def vae_encoder(image: torch.Tensor, model):
 @torch.no_grad()
 def diffusion_image_checker(image:torch.Tensor, resolution, strict=True):
     # check diffusion image type
-    if image.device.type != "cuda":
-        raise RuntimeError("vae_encoder: move image to cuda!")
+    #if image.device.type != "cuda": # Are you idiot? This tiny problem deserves restart a debug session?
+    #    raise RuntimeError("vae_encoder: move image to cuda!")
     if image.ndim != 4:
-        raise TypeError(f"diffusion_image_checker: image.ndim should = 4! but get {image.ndim}")
+        raise TypeError(f"diffuison pipeline need BCHW image, ndim should = 4 but get {image.ndim}")
     B, C, H, W = image.shape
     if C != 3 or H != resolution or W != resolution:
         raise TypeError(f"diffusion_image_checker: expected BCHW, H and W = {resolution} but get {image.shape}")
     if strict:
-        max = torch.max(image)
-        min = torch.min(image)
-        if max > 1.2 or min < -1.02:
+        if torch.max(image) > 1.0001 or torch.min(image) < -1.0001:
             raise ValueError(f"diffusion_image_checker: expected img range [-1, 1], but get [{min}, {max}]")
 
 def build_unconditional_embeddings(model, batch_size):

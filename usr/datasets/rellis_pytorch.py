@@ -15,7 +15,7 @@ import os
 import sys
 from torch.utils.data import Dataset
 
-class Rellis3DDataset(Dataset):
+class Rellis3DDatasetTorch(Dataset):
     def __init__(self,
                  ignore_label=255,
                  crop_sizeHW=(1024, 1024),
@@ -98,10 +98,10 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
     from usr.utils import Visualizer
 
-    dataset = Rellis3DDataset(255, crop_sizeHW=(512, 512))
+    dataset = Rellis3DDataset2(255, crop_sizeHW=(512, 512))
     loader = torch.utils.data.DataLoader(dataset, batch_size=2)
     vis = Visualizer()
     for _, j in enumerate(loader, 0):
-        vis.RGB_tensor_show(j[0][0])
+        vis.RGB_01_show(j[0][0])
         vis.gt_show(j[1][0])
     print("pass validation")

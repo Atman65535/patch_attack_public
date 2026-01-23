@@ -9,7 +9,7 @@ from typing import Optional, Union, Dict, Sequence, List, Callable
 Dataset calss derived from BaseSegDataset
 """
 
-#print("rellis3d registered")
+print("rellis3d registered")
 
 @DATASETS.register_module()
 class Rellis3DDataset(BaseSegDataset):

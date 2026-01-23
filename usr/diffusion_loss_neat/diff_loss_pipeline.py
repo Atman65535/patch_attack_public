@@ -74,12 +74,16 @@ class DiffLossTools:
         self.num_inference_steps = cfg.num_inference_steps
         self.guidance_scale = cfg.guidance_scale
         self.intermediate_steps = cfg.intermediate_steps
+        self.self_weight = cfg.self_weight
+        self.cross_weight = cfg.cross_weight
+        self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
         self.model = build_diffusion_model()
         self.vis = Visualizer()
 
     def get_loss(self, clean, adv, gt):
         self.attn_catcher.reset_all()
-
+        clean = clean.to(self.device)
+        adv = adv.to(self.device)
         diffusion_image_checker(clean, resolution=self.resolution, strict=True)
         diffusion_image_checker(adv, resolution=self.resolution, strict=True)
 
@@ -121,7 +125,7 @@ class DiffLossTools:
         self.attn_catcher.reset_all()
 
         cross_attn_loss = adv_cross_map.var()
-        return self_attn_loss, cross_attn_loss
+        return self.self_weight*self_attn_loss, self.cross_weight* cross_attn_loss
 
     def _get_prompt_from_gt(self, gt):
         """
@@ -132,28 +136,29 @@ class DiffLossTools:
             return self.label_dict[top1] + " and " + self.label_dict[top2]
         return self.label_dict[top1]
 
-    @staticmethod
-    def image_preprocessor01(list_of_raw_imgs: List[torch.Tensor], W, H, pad_val=0.0):
+    def get_gt_in_patch(self, tensor, anchor):
+        """
+            Get ground truth under patched area.
+        Args:
+            tensor: gt clean [BHW]
+            anchor: anchor from PatchHandler
+        """
+        diff_tensor = tensor.clone()
+        return diff_tensor[:, anchor[0]:anchor[0]+self.resolution, anchor[1]:anchor[1]+self.resolution]
+
+    def std_image_to_diffusion_format(self, tensor, anchor = None):
         """
         手动实现的预处理类，主要是希望预处理行为可控
-        input List[ (3, H, W), ...]
-        Returns: Batch, (B, C, H, W)
+        input : Standard image batch of dataset, range [0, 1], float32
+        Returns: Batch, (B, C, H, W), range [-1, 1] for diffusion
         """
-        out = []
-        device = torch.device("cuda", 0)
-        for img in list_of_raw_imgs:
-            if img.ndim != 3:
-                raise ValueError("expected input image ndim=3")
-            img_trans = img[[2, 1, 0], ...]
-            if img.shape[2] > W or img.shape[1] > H:
-                raise ValueError("img.shape is larger than padding target!")
-            pad_w = W - img.shape[2]
-            pad_h = H - img.shape[1]
-            img_trans = F.pad(img_trans, (0, pad_w, 0, pad_h), value=pad_val)
-            img_trans = img_trans / 255.0
-            out.append(img_trans)
-        return torch.stack(out).to(device=device)
-
+        if tensor.ndim != 4:
+            raise TypeError(f"expected tensor BCHW, but get ndim={tensor.ndim}")
+        diff_tensor = tensor.clone()
+        diff_tensor = diff_tensor * 2.0 - 1.0
+        if anchor is None:
+            return diff_tensor
+        return diff_tensor[:, :, anchor[0]:anchor[0]+self.resolution, anchor[1]:anchor[1]+self.resolution]
 
 if __name__ == "__main__":
     #  = DiffLossTools()

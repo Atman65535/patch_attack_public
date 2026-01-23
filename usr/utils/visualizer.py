@@ -59,11 +59,14 @@ class Visualizer:
         while len(self.color_list) < 256:
             self.color_list.append([0,0,0])
         self.color_list = np.array(self.color_list, dtype=np.uint8)
-    def RGB_tensor_show(self, tensor):
-        # no numpy array accepted [C H W]
+    def RGB_01_show(self, tensor):
+        """
+        Img show, Only accept standart 01 torch tensor or np array
+        Args:
+            tensor: What ever you want to shou
+        """
         if type(tensor) is torch.Tensor:
-            t = tensor.to(torch.uint8)
-            t = t.detach().cpu().permute(1, 2, 0).numpy()
+            t = tensor.detach().cpu().permute(1, 2, 0).numpy()
         if t.dtype is np.float32:
             t = (t + 1.)/2
             t *= 255
@@ -137,7 +140,7 @@ class Visualizer:
         res_map = np.stack([res_map] * 3, axis=-1)
         vis_large = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
         color_map = cv2.applyColorMap(vis_large, cv2.COLORMAP_JET)
-        cv2.imwrite(f"./heat_map/{save_path}.png", color_map)
+        cv2.imwrite(f"./heat_map/{file_name}.png", color_map)
 
 if __name__ == "__main__":
     print("pass validation")

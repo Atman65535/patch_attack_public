@@ -8,18 +8,13 @@ Description:
 import warnings
 from typing import Optional
 
+import cv2
 import torch
 import torch.nn
-from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
-from mmengine.runner import Runner
 from mmengine import Config
-from mmseg.registry import  MODELS
-from mmseg.structures import SegDataSample
-
-from usr.utils import Visualizer
-from usr.datasets import Rellis3DDataset
+import segmentation_models_pytorch as smp
 
 def invoke(*argc, **argv):
     print("call")
@@ -28,46 +23,55 @@ class Classifier:
     def __init__(self, cfg):
         """
         Args:
-            cfg: this config file is the base config, not config.model
+            cfg: this config file is the modelpart of config
         """
-        if not hasattr(cfg, "model"):
-            raise ValueError("the config of Classifier should have model attribution")
-        self.model_cfg          = cfg.model
-
-        cfg = cfg.classifier_cfg
+        # model
+        model_name = cfg.model
+        init_params = cfg.argv
+        load_from = cfg.load_from
+        # basic settings
         self.ignore_label       = cfg.ignore_label
         self.patch_size         = cfg.patch_size
         self.outer_enhance      = cfg.outer_enhance
         self.patch_supress_weight = cfg.patch_supress_weight
-        self.weight             = cfg.weight
-        self.mean               = [0.485, 0.456, 0.406]
-        self.std                = [0.229, 0.224, 0.225]
+        self.loss_weight        = cfg.loss_weight
+        self.mean               = cfg.mean
+        self.std                = cfg.std
 
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.normalize = transforms.Compose([transforms.Normalize(mean=self.mean, std=self.std)])
 
-        self.model = MODELS.build(self.model_cfg).to(self.device)
-        self.model.data_preprocessor = None
-        self.model.eval()
+        if getattr(smp, model_name) is None:
+            raise AttributeError(f"No attribution smp.{model_name}")
+        attr = getattr(smp, model_name)
+        self.model = attr(**init_params)
+        state_dict = torch.load(load_from)
+        self.model.load_state_dict(state_dict)
+        self.model.eval().to(self.device)
         for param in self.model.parameters():
             param.requires_grad_(False)  # freeze
         # default
         self.ce_loss = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_label, reduction="none")
 
-    def inference(self, tensor, gt):
+    def _preprocess(self, tensor):
+        tensor = tensor.to(self.device)
+        # tensor = self.normalize(tensor)
+        return tensor
+
+    def _postprocess(self, tensor):
+        pass
+
+    def inference(self, tensor):
         """
         Quick inference with segmentor
         Args:
             tensor: data tensor, accept Float32, 0~1
-            gt:     ground truth
         Returns: prediction and logits.
         """
-        tensor = self.normalize(tensor)
-        logits = self.model.predict(tensor.to(self.device))
-        print(f"Logits range: {logits.min().item()} to {logits.max().item()}")
+        tensor = self._preprocess(tensor)
+        logits = self.model(tensor)
         pred = torch.argmax(logits, dim=1)
-        print(torch.unique(pred))
-
+        self._postprocess(logits)
         return pred, logits
 
     def class_loss(self, seg_logits, gt, patch_anchor=None):
@@ -95,37 +99,23 @@ class Classifier:
             loss = loss_map * weight_mask
 
         # Negative ! Negative !
-        return -1  *  loss_map.mean() * self.weight
+        return -1  *  loss_map.mean() * self.loss_weight
 
 if __name__ == "__main__":
-    import sys
-    import os
-
-    sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
-    from mmseg.utils import register_all_modules
-    register_all_modules()
-    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/exp/patch_config.py")
-    dataset = Rellis3DDataset()
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=4)
-    model = Classifier(cfg)
+    from usr.utils import Visualizer
     vis = Visualizer()
-    for _, data in enumerate(dataloader, 0):
-        im = data[0]
-        gt = data[1]
-        pred, logit = model.inference(im, gt)
-        vis.gt_show(pred[0])
+    from usr.datasets.rellis_pytorch import Rellis3DDatasetTorch
+    from torch.utils.data import DataLoader
+    from mmengine import Config
+    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/patch_config.py")
+    ds = Rellis3DDatasetTorch(crop_sizeHW=(512, 512))
+    dl = DataLoader(ds, batch_size=1)
+    classifier = Classifier(cfg.classifier_cfg)
+    for img, gt in dl:
+        pred, logits = classifier.inference(img)
         vis.gt_show(gt[0])
-        vis.RGB_tensor_show((im[0]*255).to(torch.uint8))
-        #loss = model.class_loss(logit, gt)
-
-    # from mmseg.apis import init_model, inference_model,show_result_pyplot
-    #
-    # config_path = '/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/exp/bisenetv2_rellis1024x1024.py'
-    # checkpoint_path = '/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/pretrained/bisenetv2.pth'
-    # img_path = '/home/atman/a_workspace/mmlab/mmsegmentation/data/rellis3d/00000/pylon_camera_node/frame000000-1581624652_750.png'
-    #
-    #
-    # model = init_model(config_path, checkpoint_path)
-    # result = inference_model(model, img_path)
-    # vis_image = show_result_pyplot(model, img_path, result)
+        vis.gt_show(pred[0])
+        vis.RGB_01_show(img[0])
+        print(f"loss = {classifier.class_loss(logits, gt)}")
+        break;
     print("pass validation")

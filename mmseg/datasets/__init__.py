@@ -41,7 +41,7 @@ from .transforms import (CLAHE, AdjustGamma, Albu, BioMedical3DPad,
                          SegRescale)
 from .voc import PascalVOCDataset
 
-from usr.datasets import Rellis3DDataset
+from usr.datasets.rellis3d import Rellis3DDataset
 
 # yapf: enable
 __all__ = [

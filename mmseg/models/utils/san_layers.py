@@ -355,7 +355,7 @@ def cross_attn_layer(tf_layer: BaseTransformerLayer, x, mem, attn_bias):
         'bias_v': self_attn_layer.bias_v,
         'add_zero_attn': self_attn_layer.add_zero_attn,
         'dropout_p': self_attn_layer.dropout,
-        'out_proj_weight': self_attn_layer.out_proj.weight,
+        'out_proj_weight': self_attn_layer.out_proj.loss_weight,
         'out_proj_bias': self_attn_layer.out_proj.bias,
         'training': self_attn_layer.training
     }
