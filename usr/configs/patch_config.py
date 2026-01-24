@@ -19,12 +19,12 @@ patch_path = os.path.join(cwd, "usr/patch/patch.pat") # 暂为了存储patch的p
 
 #************* TRAIN SETTINGS ****************#
 epochs              = 30
-lr                  = 0.005
+lr                  = 0.01
 ignore_label        = 255
 batch_size          = 2
 num_workers         = 4
 patch_size          = 128               # 保证32的倍数，VAE和UNet降采样需求
-crop_sizeHW         = (512, 512)        # Crop Size for Dataset, (Height, Width)
+crop_sizeHW         = (1024, 1024)        # Crop Size for Dataset, (Height, Width)
 
 hyper_params = dict(
     # Loss Control
