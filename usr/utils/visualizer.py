@@ -47,7 +47,7 @@ class Visualizer:
         while len(self.color_list) < 256:
             self.color_list.append(self.id_palette_dict.get(len(self.color_list), {"color": [0, 0, 0]})['color'])
         self.color_list = np.array(self.color_list, dtype=np.uint8)
-    def RGB_01_show(self, tensor):
+    def RGB_01_show(self, tensor, return_array=False):
         """
         Img show, Only accept standart 01 torch tensor or np array
         Args:
@@ -59,14 +59,18 @@ class Visualizer:
             t = (t + 1.)/2
             t *= 255
             t =t.astype(np.uint8)
+        if return_array:
+            return t
         plt.imshow(t)
         plt.show()
 
-    def gt_show(self, gt):
+    def gt_show(self, gt, return_array=False):
         # [H, W]
         if gt.dtype is not torch.uint8:
             gt = gt.to(torch.uint8)
         im_out = self.color_list[gt.detach().cpu()]
+        if return_array:
+            return im_out
         plt.imshow(im_out)
         plt.show()
 

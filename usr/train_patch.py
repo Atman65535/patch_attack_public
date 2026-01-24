@@ -83,13 +83,9 @@ def main():
                     "Epoch": e,
                 }, step=global_steps)
                 log_dict = {
-                    "Visuals/Comparison": wandb.Image(
-                        img_adv[0].permute(1, 2, 0).detach().cpu().numpy(),
-                        masks={
-                            "predictions": {"mask_data": pred[0].detach().cpu().numpy(), "class_labels": vis.id_name_dict},
-                            "ground_truth": {"mask_data": gt_clean[0].detach().cpu().numpy(), "class_labels": vis.id_name_dict}
-                        }
-                    ),
+                    "Visuals/Comparison": wandb.Image(img_adv[0].permute(1, 2, 0).detach().cpu().numpy()),
+                    "Visuals/Predictions": wandb.Image(vis.gt_show(pred[0],return_array=True)),
+                    "Visuals/GroundTruth": wandb.Image(vis.gt_show(gt_clean[0], return_array=True)),
                     "Visuals/Raw_Patch": wandb.Image(patch_handler.patch.permute(1, 2, 0).detach().cpu().numpy(), caption="Generated Patch Texture"),
                     "Visuals/Self_Attention_clean": wandb.Image(vis.visualize_self_attn_map(clean_self), caption="self attn clean"),
                     "Visuals/Self_Attention_adv": wandb.Image(vis.visualize_self_attn_map(adv_self), caption="self attn adv"),

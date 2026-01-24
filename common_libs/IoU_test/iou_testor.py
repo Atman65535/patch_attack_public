@@ -17,4 +17,9 @@ dataset = Rellis3DDatasetTorch(crop_sizeHW=(1024, 1024), mode="test")
 
 model_list = []
 
-unet_plus_plus =
+unet_plus_plus = smp.UnetPlusPlus(encoder_name="resnet34",
+                                  encoder_depth=5,
+                                  encoder_weights="imagenet",
+                                  in_channels=3,
+                                  classes=19)
+ckpt = ""
