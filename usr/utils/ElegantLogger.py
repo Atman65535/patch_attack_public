@@ -20,13 +20,14 @@ class ElegantLogger:
     def __init__(self, save_path="logs"):
         os.makedirs(save_path, exist_ok=True)
         self.log_file = os.path.join(save_path, f"exp_{time.strftime('%m.%d_%H:%M')}.log")
-        self.loss_val = defaultdict(float)
+        self.loss_list = defaultdict(float)
+        self.total_loss = 0
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
                 v = v.detach().item() # 彻底切断计算图，防止显存泄漏
-            self.loss_val[k] += v
+            self.loss_list[k] += v
 
     def flush(self, epoch, step=None):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -37,20 +38,22 @@ class ElegantLogger:
         # 拼接三种 Loss
         loss_details = []
         for name in ['classifier_loss', 'self_loss', 'cross_loss']:
-            avg_val = self.loss_val[name]
+            avg_val = self.loss_list[name]
             loss_details.append(f"{name}: {avg_val:.4f}")
+            self.total_loss += avg_val
 
         log_str += " | " + " | ".join(loss_details)
 
         # 1. 打印到终端 (带一点颜色更漂亮)
-        print(f"\033[1;34m{log_str}\033[0m")
+        print(f"\033[1;32m{log_str}\033[0m")
 
         # 2. 写入文件
         with open(self.log_file, "a") as f:
             f.write(log_str + "\n")
 
         # 3. 重置累加器
-        self.loss_val.clear()
+        self.loss_list.clear()
+        self.total_loss = 0
 
 if __name__ == "__main__":
     logger = ElegantLogger()

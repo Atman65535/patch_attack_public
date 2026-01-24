@@ -15,49 +15,37 @@ import torch
 
 class Visualizer:
     def __init__(self):
-        self.palette = {0: {"color": [0, 0, 0],         "name": "void"},
-                        1: {"color": [108, 64, 20],     "name": "dirt"},
-                        3: {"color": [0, 102, 0],       "name": "grass"},
-                        4: {"color": [0, 255, 0],       "name": "tree"},
-                        5: {"color": [0, 153, 153],     "name": "pole"},
-                        6: {"color": [0, 128, 255],     "name": "water"},
-                        7: {"color": [0, 0, 255],       "name": "sky"},
-                        8: {"color": [255, 255, 0],     "name": "vehicle"},
-                        9: {"color": [255, 0, 127],     "name": "object"},
-                        10: {"color": [64, 64, 64],     "name": "asphalt"},
-                        12: {"color": [255, 0, 0],      "name": "building"},
-                        15: {"color": [102, 0, 0],      "name": "log"},
-                        17: {"color": [204, 153, 255],  "name": "person"},
-                        18: {"color": [102, 0, 204],    "name": "fence"},
-                        19: {"color": [255, 153, 204],  "name": "bush"},
-                        23: {"color": [170, 170, 170],  "name": "concrete"},
-                        27: {"color": [41, 121, 255],   "name": "barrier"},
-                        31: {"color": [134, 255, 239],  "name": "puddle"},
-                        33: {"color": [99, 66, 34],     "name": "mud"},
-                        34: {"color": [110, 22, 138],   "name": "rubble"}}
-        self.color_list = [
-            [108, 64, 20],
-            [0, 102, 0],
-            [0, 255, 0],
-            [0, 153, 153],
-            [0, 128, 255],
-            [0, 0, 255],
-            [255, 255, 0],
-            [255, 0, 127],
-            [64, 64, 64],
-            [255, 0, 0],
-            [102, 0, 0],
-            [204, 153, 255],
-            [102, 0, 204],
-            [255, 153, 204],
-            [170, 170, 170],
-            [41, 121, 255],
-            [134, 255, 239],
-            [99, 66, 34],
-            [110, 22, 138],
-        ]
+        """this palette and color list is remapped definition"""
+        self.id_palette_dict = {
+                        # 0 : {"color": [0, 0, 0],         "name": "void"},
+                        0 : {"color": [108, 64, 20],     "name": "dirt"},
+                        1 : {"color": [0, 102, 0],       "name": "grass"},
+                        2 : {"color": [0, 255, 0],       "name": "tree"},
+                        3 : {"color": [0, 153, 153],     "name": "pole"},
+                        4 : {"color": [0, 128, 255],     "name": "water"},
+                        5 : {"color": [0, 0, 255],       "name": "sky"},
+                        6 : {"color": [255, 255, 0],     "name": "vehicle"},
+                        7 : {"color": [255, 0, 127],     "name": "object"},
+                        8 : {"color": [64, 64, 64],      "name": "asphalt"},
+                        9 : {"color": [255, 0, 0],       "name": "building"},
+                        10: {"color": [102, 0, 0],       "name": "log"},
+                        11: {"color": [204, 153, 255],   "name": "person"},
+                        12: {"color": [102, 0, 204],     "name": "fence"},
+                        13: {"color": [255, 153, 204],   "name": "bush"},
+                        14: {"color": [170, 170, 170],   "name": "concrete"},
+                        15: {"color": [41, 121, 255],    "name": "barrier"},
+                        16: {"color": [134, 255, 239],   "name": "puddle"},
+                        17: {"color": [99, 66, 34],      "name": "mud"},
+                        18: {"color": [110, 22, 138],    "name": "rubble"}}
+        self.id_name_dict = { 0  : "dirt", 1  : "grass", 2  : "tree",
+                              3  : "pole", 4  : "water", 5  : "sky",
+                              6  : "vehicle", 7  : "object", 8  : "asphalt",
+                              9  : "building", 10 : "log", 11 : "person",
+                              12 : "fence", 13 : "bush", 14 : "concrete",
+                              15 : "barrier", 16 : "puddle", 17 : "mud", 18 : "rubble"}
+        self.color_list = []
         while len(self.color_list) < 256:
-            self.color_list.append([0,0,0])
+            self.color_list.append(self.id_palette_dict.get(len(self.color_list), {"color": [0, 0, 0]})['color'])
         self.color_list = np.array(self.color_list, dtype=np.uint8)
     def RGB_01_show(self, tensor):
         """
@@ -87,7 +75,7 @@ class Visualizer:
         class_dict: 格式为 {id: {"color": [R, G, B], "name": "xxx"}, ...}
         """
         if class_dict == None:
-            class_dict = self.palette
+            class_dict = self.id_palette_dict
          # 提取信息
         ids = sorted(class_dict.keys())
         colors = [np.array(class_dict[i]["color"]) / 255.0 for i in ids] # 归一化到 0-1
@@ -115,7 +103,15 @@ class Visualizer:
         plt.tight_layout()
         plt.show()
 
-    def show_cross_attention_map(self, attn_map, file_name = "map"):
+    def visualize_cross_attn_map(self, attn_map, file_name=None):
+        """
+        Args:
+            attn_map: attention map from attention pipeline
+            file_name: if this is not None, store the result in
+                        f'heat_map/{filename}.png', else return ndarray
+        Returns: ndarray [HWC], you can use cv2 or mpl to visualize it
+        """
+        output_size = (256, 256)
         scale = attn_map.shape[0]
         tmp_img = torch.mean(attn_map, dim=-1)# expand to image
         tmp_img = tmp_img * 255 / tmp_img.max()
@@ -123,13 +119,25 @@ class Visualizer:
         tmp_img = tmp_img.detach().cpu().unsqueeze(-1).expand(scale, scale, 3).numpy()
         tmp_img = cv2.cvtColor(tmp_img, cv2.COLOR_RGB2BGR)
         tmp_img = cv2.applyColorMap(tmp_img, cv2.COLORMAP_JET)
-        tmp_img = cv2.resize(tmp_img, (256, 256), interpolation=cv2.INTER_NEAREST)
-        cv2.imwrite(f"./heat_map/{file_name}.png", tmp_img)
+        tmp_img = cv2.resize(tmp_img, output_size, interpolation=cv2.INTER_NEAREST)
+        if file_name is not None:
+            cv2.imwrite(f"./heat_map/{file_name}.png", tmp_img)
+        else:
+            return tmp_img
 
-    def show_self_attention_map(self, attn_map, file_name="map"):
+    def visualize_self_attn_map(self, attn_map, file_name=None):
+        """
+        Transform original attention map to visiable picture or save it
+        Args:
+            attn_map: attention map from attention pipeline
+            file_name: if set this none, return the np array, else store in
+                       f'heat_map/{filename}.png'
+
+        Returns: ndarray. [HWC], 256 x 256, attention map
+        """
         output_size = (256, 256)
         if attn_map.shape[-1] != attn_map.shape[0] * attn_map.shape[1]:
-            raise ValueError("expected attention area is a square!")
+            raise ValueError(f"expected attention area is a square! get {attn_map.shape}")
         if torch.is_tensor(attn_map):
             attn_map = attn_map.detach().cpu().numpy()
         flat_map = attn_map.reshape(attn_map.shape[-1], attn_map.shape[-1]) # a big
@@ -140,7 +148,10 @@ class Visualizer:
         res_map = np.stack([res_map] * 3, axis=-1)
         vis_large = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
         color_map = cv2.applyColorMap(vis_large, cv2.COLORMAP_JET)
-        cv2.imwrite(f"./heat_map/{file_name}.png", color_map)
+        if file_name is not None:
+            cv2.imwrite(f"./heat_map/{file_name}.png", color_map)
+        else:
+            return color_map
 
 if __name__ == "__main__":
     print("pass validation")

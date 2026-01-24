@@ -55,7 +55,7 @@ class Classifier:
 
     def _preprocess(self, tensor):
         tensor = tensor.to(self.device)
-        # tensor = self.normalize(tensor)
+        tensor = self.normalize(tensor)
         return tensor
 
     def _postprocess(self, tensor):

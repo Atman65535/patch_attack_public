@@ -29,16 +29,16 @@ crop_sizeHW         = (512, 512)        # Crop Size for Dataset, (Height, Width)
 hyper_params = dict(
     # Loss Control
     classifier_loss_weight = 1,
-    self_loss_weight = 10,
-    cross_loss_weight = 1000,
+    self_loss_weight = 8,
+    cross_loss_weight = 1e6,
     # Classifier: outer enhancement
     outer_enhancement = True,
-    outer_enhan_patch_supress_weight = 0.5,
+    outer_enhan_patch_supress_weight = 0.8,
     # ImageNet Normalize
     mean = [0.485, 0.456, 0.406],
     std  = [0.229, 0.224, 0.225],
     # patch
-    patch_alpha = 0.7,
+    patch_alpha = 0.5,
     # diffusion
     intermediate_steps = 1,
 )
@@ -46,13 +46,13 @@ hyper_params = dict(
 paths = dict(
     patch_load_from = "",
     dataset_base_addr = "/home/atman/a_workspace/mmlab/mmsegmentation/data/rellis3d",
-    model_pretrained = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/pretrained/UNetPlusPlus512x512.pth"
+    model_pretrained = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 )
 dataset_cfg = dict(
     ignore_label=ignore_label,
     crop_sizeHW=crop_sizeHW,
     base_addr= paths['dataset_base_addr'],
-    mode="test", # train, test, val
+    mode="train", # train, test, val
 )
 dataloader_cfg = dict(
     shuffle=False,

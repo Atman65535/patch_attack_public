@@ -196,6 +196,7 @@ class AttentionCatcher:
     def extract_attn_map(self, stages: Tuple[str, ...], is_cross=True):
         """ stages: 'up', 'mid', 'down'
             is_cross: bool, indicates that if we want cross attention
+            returns:
         """
         target_tokens = self.target_map_tokens
         average_attentions = self.attn_storage.get_average_maps()
@@ -213,11 +214,11 @@ class AttentionCatcher:
         out = out.sum(dim=1) / out.shape[1]
         return out
 
-    def attention_loss(self, stages: Tuple[str, ...]):
-        ca_map = self.extract_cross_attn_map(stages)
-        if self.checked != True:
-            warnings.warn(f"attention_loss: this loss is based on a hyposis that input is [clean, adv]"
-                      f"if you want to turn off this warning, set checked=True in initialize function")
+    # def attention_loss(self, stages: Tuple[str, ...]):
+    #     ca_map = self.extract_cross_attn_map(stages)
+    #     if self.checked != True:
+    #         warnings.warn(f"attention_loss: this loss is based on a hyposis that input is [clean, adv]"
+    #                   f"if you want to turn off this warning, set checked=True in initialize function")
 
     def reset_all(self):
         self.self_attn_loss.reset_all()

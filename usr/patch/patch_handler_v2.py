@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 
 from mmengine import Config
+from numpy import dtype
+
 from usr.utils import Visualizer
 
 
@@ -58,6 +60,7 @@ class PatchHandler:
         if self.patch_load_from and os.path.exists(self.patch_load_from):
             self.patch = cv2.imread(self.patch_load_from) # uint8
             self.patch = cv2.cvtColor(self.patch, cv2.COLOR_BGR2RGB)
+            self.patch = self.patch.astype(np.float32) / 255
             if self.patch.shape[1] != self.patch_patch_size:
                 self.patch = np.random.rand(self.patch_patch_size, self.patch_patch_size, 3)
         else:
@@ -112,6 +115,7 @@ class PatchHandler:
     def dump(self, path= None):
         # Save patch
         img = self.patch.permute(1, 2, 0).detach().cpu().numpy()
+        img = img * 255
         img.astype(np.uint8)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         if path is None:

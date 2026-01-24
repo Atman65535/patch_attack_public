@@ -87,7 +87,7 @@ class DiffLossTools:
         diffusion_image_checker(clean, resolution=self.resolution, strict=True)
         diffusion_image_checker(adv, resolution=self.resolution, strict=True)
 
-        cond_prompt = self._get_prompt_from_gt(gt) # conditional prompt
+        cond_prompt = self.get_prompt_from_gt(gt) # conditional prompt
         latent_clean = ddim_reverse(clean,
                                     cond_prompt,
                                     self.model,
@@ -119,15 +119,15 @@ class DiffLossTools:
         self_attn_loss = self.attn_catcher.self_attn_loss.loss
         adv_cross_map = self.attn_catcher.extract_attn_map(("up", "down"), is_cross=True)[1, :, :, 1:token_len - 1]
         clean_self_map, adv_self_map = self.attn_catcher.extract_attn_map(stages=("up", "down"), is_cross=False)
-        self.vis.show_cross_attention_map(adv_cross_map, "cross")
-        self.vis.show_self_attention_map(adv_self_map, "advself")
-        self.vis.show_self_attention_map(clean_self_map,"cleanself")
+        # self.vis.show_cross_attention_map(adv_cross_map, "cross")
+        # self.vis.show_self_attention_map(adv_self_map, "advself")
+        # self.vis.show_self_attention_map(clean_self_map,"cleanself")
         self.attn_catcher.reset_all()
 
         cross_attn_loss = adv_cross_map.var()
-        return self.self_weight*self_attn_loss, self.cross_weight* cross_attn_loss
+        return self.self_weight*self_attn_loss, self.cross_weight* cross_attn_loss, clean_self_map, adv_self_map, adv_cross_map
 
-    def _get_prompt_from_gt(self, gt):
+    def get_prompt_from_gt(self, gt):
         """
         从gt_map中获取prompt
         """

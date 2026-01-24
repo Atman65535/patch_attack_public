@@ -98,7 +98,7 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
     from usr.utils import Visualizer
 
-    dataset = Rellis3DDataset2(255, crop_sizeHW=(512, 512))
+    dataset = Rellis3DDatasetTorch(255, crop_sizeHW=(512, 512))
     loader = torch.utils.data.DataLoader(dataset, batch_size=2)
     vis = Visualizer()
     for _, j in enumerate(loader, 0):

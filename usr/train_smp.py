@@ -9,6 +9,7 @@ import torch
 import segmentation_models_pytorch as smp
 from torch.utils.data import DataLoader
 from usr.datasets.rellis_pytorch import Rellis3DDatasetTorch as Rellis3DDataset
+import torchvision.transforms as transforms
 
 # 1. 初始化模型
 # 使用 Unet++ 结构，配合 ResNet34 (权衡了速度和性能)
@@ -30,6 +31,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 train_set = Rellis3DDataset(ignore_label=255, crop_sizeHW=(512, 512))
 # 3. 准备数据 (假设你已经有了 train_ds)
 train_loader = DataLoader(train_set, batch_size=8, shuffle=True, num_workers=4)
+normalize = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 # 4. 极简训练循环
 def train_one_epoch(model, loader, optimizer, criterion):
@@ -40,6 +42,7 @@ def train_one_epoch(model, loader, optimizer, criterion):
         masks = masks.to(device).long()
 
         optimizer.zero_grad()
+        images = normalize(images)
         output = model(images)  # 输出是 Raw Logits
         loss = criterion(output, masks)
 
