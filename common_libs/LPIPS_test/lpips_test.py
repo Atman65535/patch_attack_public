@@ -9,7 +9,7 @@ import torch
 import lpips
 import torchvision.io
 
-from usr.datasets.rellis_pytorch import Rellis3DDatasetTorch
+from src.datasets.rellis_pytorch import Rellis3DDatasetTorch
 loss_fn_alex = lpips.LPIPS(net='alex') # best forward scores
 
 import torch

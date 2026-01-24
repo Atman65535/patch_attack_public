@@ -11,7 +11,7 @@ import segmentation_models_pytorch
 import segmentation_models_pytorch as smp
 import torch
 from torch.utils.data import DataLoader
-from usr.datasets.rellis_pytorch import Rellis3DDatasetTorch
+from src.datasets.rellis_pytorch import Rellis3DDatasetTorch
 import torchvision.transforms as transforms
 from torchvision.transforms import Normalize
 from torchmetrics.classification import MulticlassJaccardIndex
@@ -26,7 +26,7 @@ unet_plus_plus = smp.UnetPlusPlus(encoder_name="resnet34",
                                   encoder_weights="imagenet",
                                   in_channels=3,
                                   classes=19)
-ckpt_upp = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+ckpt_upp = "/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 model_list.append(unet_plus_plus)
 ckpt_list.append(ckpt_upp)
 
