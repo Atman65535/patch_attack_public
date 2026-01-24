@@ -5,6 +5,7 @@ Date: 12/22/25
 Description:
     
 """
+
 import torch
 from typing import List
 import torch.nn.functional as F
@@ -63,13 +64,16 @@ class DiffLossTools:
         if cfg.label_dict is None:
             raise ValueError("DiffLossTools: label dict must not none!")
 
+
+        self.RFES_edge = cfg.RFES_edge
+        self.resolution = cfg.diffusion_resolution + 2 * self.RFES_edge
         self.label_dict = cfg.label_dict
         self.attn_catcher = AttentionCatcher(batch_size=cfg.batch_size_of_diffusion * 2,
-                                             resolution=cfg.diffusion_resolution,
+                                             resolution=self.resolution,
                                              target_map_resolution=None,
                                              checked=False)
         self.attn_catcher.reset_all()
-        self.resolution = cfg.diffusion_resolution
+
         self.batch_size = cfg.batch_size_of_diffusion
         self.num_inference_steps = cfg.num_inference_steps
         self.guidance_scale = cfg.guidance_scale
@@ -143,8 +147,24 @@ class DiffLossTools:
             tensor: gt clean [BHW]
             anchor: anchor from PatchHandler
         """
+        _, h, w = tensor.shape
+        if anchor[0] - self.RFES_edge  <= 0 or anchor[1] - self.RFES_edge <= 0: # left out
+            h_start = anchor[0]
+            w_start = anchor[1]
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
+        elif anchor[0] + self.resolution + self.RFES_edge >= h or anchor[1] + self.resolution + self.RFES_edge >= w: # right out
+            h_start = anchor[0] - 2 * self.RFES_edge
+            w_start = anchor[1] - 2 * self.RFES_edge
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
+        else:
+            h_start = anchor[0] - self.RFES_edge
+            w_start = anchor[1] - self.RFES_edge
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
         diff_tensor = tensor.clone()
-        return diff_tensor[:, anchor[0]:anchor[0]+self.resolution, anchor[1]:anchor[1]+self.resolution]
+        return diff_tensor[:, h_start:h_end, w_start:w_end]
 
     def std_image_to_diffusion_format(self, tensor, anchor = None):
         """
@@ -154,11 +174,29 @@ class DiffLossTools:
         """
         if tensor.ndim != 4:
             raise TypeError(f"expected tensor BCHW, but get ndim={tensor.ndim}")
+        _, _, h, w = tensor.shape
         diff_tensor = tensor.clone()
         diff_tensor = diff_tensor * 2.0 - 1.0
         if anchor is None:
             return diff_tensor
-        return diff_tensor[:, :, anchor[0]:anchor[0]+self.resolution, anchor[1]:anchor[1]+self.resolution]
+
+        if anchor[0] - self.RFES_edge  <= 0 or anchor[1] - self.RFES_edge <= 0: # left out
+            h_start = anchor[0]
+            w_start = anchor[1]
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
+        elif anchor[0] + self.resolution + self.RFES_edge >= h or anchor[1] + self.resolution + self.RFES_edge >= w: # right out
+            h_start = anchor[0] - 2 * self.RFES_edge
+            w_start = anchor[1] - 2 * self.RFES_edge
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
+        else:
+            h_start = anchor[0] - self.RFES_edge
+            w_start = anchor[1] - self.RFES_edge
+            h_end = h_start + self.resolution
+            w_end = w_start + self.resolution
+
+        return diff_tensor[:, :, h_start:h_end, w_start:w_end]
 
 if __name__ == "__main__":
     #  = DiffLossTools()

@@ -140,9 +140,10 @@ class Visualizer:
             raise ValueError(f"expected attention area is a square! get {attn_map.shape}")
         if torch.is_tensor(attn_map):
             attn_map = attn_map.detach().cpu().numpy()
+        h, w, c = attn_map.shape
         flat_map = attn_map.reshape(attn_map.shape[-1], attn_map.shape[-1]) # a big
         u, s, vh = np.linalg.svd(flat_map - np.mean(flat_map, axis=1, keepdims=True))
-        res_map = u[:, 0].reshape(8, 8)
+        res_map = u[:, 0].reshape(h, w)
         res_map = (res_map - res_map.min()) / (res_map.max() - res_map.min() + 1e-8)
         res_map = (res_map * 255).astype(np.uint8)
         res_map = np.stack([res_map] * 3, axis=-1)

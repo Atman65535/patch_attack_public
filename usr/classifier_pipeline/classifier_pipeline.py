@@ -107,7 +107,7 @@ if __name__ == "__main__":
     from usr.datasets.rellis_pytorch import Rellis3DDatasetTorch
     from torch.utils.data import DataLoader
     from mmengine import Config
-    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/patch_config.py")
+    cfg = Config.fromfile("/usr/configs/patch_config_local.py")
     ds = Rellis3DDatasetTorch(crop_sizeHW=(512, 512))
     dl = DataLoader(ds, batch_size=1)
     classifier = Classifier(cfg.classifier_cfg)

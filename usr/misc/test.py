@@ -20,7 +20,7 @@ if __name__ == "__main__":
     from mmseg.utils import register_all_modules
     register_all_modules()
     vis = Visualizer()
-    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/exp/patch_config.py")
+    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/exp/patch_config_local.py")
     data_loader = Runner.build_dataloader(cfg.train_dataloader)
     date_iter  = iter(data_loader)
     img = cv2.imread('/home/atman/a_workspace/mmlab/mmsegmentation/bisenet/frame000000-1581623790_349.png', cv2.IMREAD_GRAYSCALE)

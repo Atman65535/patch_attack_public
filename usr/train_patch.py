@@ -29,7 +29,7 @@ wandb.init(
 )
 
 def main():
-    config_file = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/patch_config.py"
+    config_file = "./usr/configs/patch_config_local.py"
     vis                     = Visualizer()
     cfg                     = Config.fromfile(config_file)
     dataset                 = Rellis3DDatasetTorch(**cfg.dataset_cfg)

@@ -1,5 +1,5 @@
 """
-File: patch_config.py
+File: patch_config_local.py
 Author: Atman
 Date: 1/23/26
 Description:
@@ -23,14 +23,14 @@ lr                  = 0.01
 ignore_label        = 255
 batch_size          = 2
 num_workers         = 4
-patch_size          = 128               # 保证32的倍数，VAE和UNet降采样需求
-crop_sizeHW         = (1024, 1024)        # Crop Size for Dataset, (Height, Width)
+patch_size          = 64               # 保证32的倍数，VAE和UNet降采样需求
+crop_sizeHW         = (512, 512)        # Crop Size for Dataset, (Height, Width)
 
 hyper_params = dict(
     # Loss Control
     classifier_loss_weight = 1,
-    self_loss_weight = 8,
-    cross_loss_weight = 1e6,
+    self_loss_weight = 30,
+    cross_loss_weight = 1e5,
     # Classifier: outer enhancement
     outer_enhancement = True,
     outer_enhan_patch_supress_weight = 0.8,
@@ -41,6 +41,7 @@ hyper_params = dict(
     patch_alpha = 0.5,
     # diffusion
     intermediate_steps = 1,
+    RFES_edge = 16, # 0, 16, 32, or more.
 )
 
 paths = dict(
@@ -109,6 +110,7 @@ diffusion_cfg = dict(
     intermediate_steps=hyper_params['intermediate_steps'], # 中介步骤，从潜空间回来一共去噪几次
     self_weight = hyper_params['self_loss_weight'],
     cross_weight = hyper_params['cross_loss_weight'],
+    RFES_edge = hyper_params['RFES_edge'],
     # 为提示词服务的字典。可以增加一些描述，不过也可以不增加
     label_dict = {
         0: "dirt",
