@@ -11,8 +11,6 @@ from typing import List
 import torch.nn.functional as F
 from ..utils import Visualizer
 
-from mmengine import ConfigDict
-
 from .ddim_reverse import ddim_reverse, ddim_reverse_no_grad
 from .UNet_patch import register_attention_control, reset_attention_control
 from .attention_catcher import AttentionCatcher
@@ -60,7 +58,7 @@ class DiffLossTools:
     主要对接主程序的类，包括整个加噪去噪得到loss的流程
     """
     def __init__(self,
-                 cfg: ConfigDict):
+                 cfg):
         if cfg.label_dict is None:
             raise ValueError("DiffLossTools: label dict must not none!")
 

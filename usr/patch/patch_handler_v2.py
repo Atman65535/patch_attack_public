@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
 
-from mmengine import Config
 from numpy import dtype
 
 from usr.utils import Visualizer
@@ -26,7 +25,7 @@ class PatchHandler:
         """summary: get float32 trainable tensor Patch.
                     Patch is at [0, 1] region
         Args:
-            cfg: mmengine.ConfigDict
+            cfg: OmegaConf configdict
         """
         self.vis                = Visualizer()
 

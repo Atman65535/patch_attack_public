@@ -9,7 +9,7 @@ Collections:
   Paper:
     Title: Masked-attention Mask Transformer for Universal Image Segmentation
     URL: https://arxiv.org/abs/2112.01527
-  README: configs/mask2former/README.md
+  README: configs/mask2former/_legacy.md
   Frameworks:
   - PyTorch
 Models:

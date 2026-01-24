@@ -1,4 +1,23 @@
--r requirements/optional.txt
--r requirements/runtime.txt
--r requirements/tests.txt
--r requirements/multimodal.txt
+# --- Core Deep Learning ---
+--index-url https://download.pytorch.org/whl/cu121
+torch==2.4.0
+torchvision==0.19.0
+torchaudio==2.4.0
+
+# --- Models & Architectures ---
+segmentation-models-pytorch==0.5.0
+transformers==4.57.6
+diffusers==0.36.0
+
+# --- Evaluation & Metrics ---
+lpips==0.1.4
+torchmetrics==1.8.2
+
+# --- Config & Tools ---
+omegaconf==2.3.0
+wandb>=0.16.0
+tqdm>=4.66.0
+
+# --- Image Processing & Utils ---
+opencv-python-headless>=4.8.0
+setuptools>=69.0.0

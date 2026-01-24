@@ -13,7 +13,6 @@ import torch
 import torch.nn
 import torchvision.transforms as transforms
 
-from mmengine import Config
 import segmentation_models_pytorch as smp
 
 def invoke(*argc, **argv):

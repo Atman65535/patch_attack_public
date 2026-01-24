@@ -7,7 +7,7 @@ Collections:
   Paper:
     Title: 'PIDNet: A Real-time Semantic Segmentation Network Inspired from PID Controller'
     URL: https://arxiv.org/pdf/2206.02066.pdf
-  README: configs/pidnet/README.md
+  README: configs/pidnet/_legacy.md
   Frameworks:
   - PyTorch
 Models:

@@ -4,7 +4,7 @@ import os
 import os.path as osp
 
 import torch
-from mmengine import Config
+from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 
 from usr.utils                      import Visualizer
@@ -18,22 +18,30 @@ torch.autograd.set_detect_anomaly(True)
 
 import wandb
 
+config_file = "/home/atman/a_workspace/mmlab/mmsegmentation/usr/configs/patch_config_local.yaml"
+cfg = OmegaConf.load(config_file)
 wandb.init(
-    project="Rellis3D-Adversarial-Attack",
-    name="Entity-Patch-Exp-01",
+    project=cfg.project,
+    name=cfg.exp_name,
     config={
         "PEX": 0,
-        "model_arch": "Unet++",
-        "patch_size": (128, 128),
+        "model_arch": cfg.model_arch,
+        "patch_size": (cfg.patch_size, cfg.patch_size),
     }
 )
+config_dict = OmegaConf.to_container(cfg, resolve=True)
+wandb.config.update(config_dict)
 
 def main():
-    config_file = "./usr/configs/patch_config_local.py"
+
     vis                     = Visualizer()
-    cfg                     = Config.fromfile(config_file)
-    dataset                 = Rellis3DDatasetTorch(**cfg.dataset_cfg)
-    dataloader              = DataLoader(dataset, **cfg.dataloader_cfg)
+    dataset                 = Rellis3DDatasetTorch(ignore_label=cfg.dataset_cfg.ignore_label,
+                                                   crop_sizeHW=cfg.dataset_cfg.crop_sizeHW,
+                                                   base_addr=cfg.dataset_cfg.base_addr,
+                                                   mode=cfg.dataset_cfg.mode)
+    dataloader              = DataLoader(dataset, shuffle=cfg.dataloader_cfg.shuffle,
+                                         batch_size=cfg.dataloader_cfg.batch_size,
+                                         num_workers=cfg.dataloader_cfg.num_workers)
     classifier              = Classifier(cfg.classifier_cfg)
     patch_handler           = PatchHandler(cfg.patch_handler_cfg)
     diffusion_loss_pipeline = DiffLossTools(cfg.diffusion_cfg)
@@ -83,7 +91,7 @@ def main():
                     "Epoch": e,
                 }, step=global_steps)
                 log_dict = {
-                    "Visuals/Comparison": wandb.Image(img_adv[0].permute(1, 2, 0).detach().cpu().numpy()),
+                    "Visuals/CleanImage": wandb.Image(img_adv[0].permute(1, 2, 0).detach().cpu().numpy()),
                     "Visuals/Predictions": wandb.Image(vis.gt_show(pred[0],return_array=True)),
                     "Visuals/GroundTruth": wandb.Image(vis.gt_show(gt_clean[0], return_array=True)),
                     "Visuals/Raw_Patch": wandb.Image(patch_handler.patch.permute(1, 2, 0).detach().cpu().numpy(), caption="Generated Patch Texture"),

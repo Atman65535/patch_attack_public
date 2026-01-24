@@ -9,7 +9,7 @@ Collections:
     Title: 'SegFormer: Simple and Efficient Design for Semantic Segmentation with
       Transformers'
     URL: https://arxiv.org/abs/2105.15203
-  README: configs/segformer/README.md
+  README: configs/segformer/_legacy.md
   Frameworks:
   - PyTorch
 Models:

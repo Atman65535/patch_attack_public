@@ -9,7 +9,7 @@ Collections:
     Title: 'MaskFormer: Per-Pixel Classification is Not All You Need for Semantic
       Segmentation'
     URL: https://arxiv.org/abs/2107.06278
-  README: configs/maskformer/README.md
+  README: configs/maskformer/_legacy.md
   Frameworks:
   - PyTorch
 Models:
