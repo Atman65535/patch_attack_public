@@ -8,7 +8,6 @@ Description:
 import warnings
 
 import torch
-import torchvision
 import cv2
 import numpy as np
 import os
@@ -32,25 +31,25 @@ class Rellis3DDatasetTorch(Dataset):
         self.img_addrs                  = []
         self.cal_addrs                  = []
         self.label_mapping = {0: 0,
-                               1: 0,
-                               3: 1,
-                               4: 2,
-                               5: 3,
-                               6: 4,
-                               7: 5,
-                               8: 6,
-                               9: 7,
-                               10: 8,
-                               12: 9,
-                               15: 10,
-                               17: 11,
-                               18: 12,
-                               19: 13,
-                               23: 14,
-                               27: 15,
-                               31: 16,
-                               33: 17,
-                               34: 18}
+                              1: 0,
+                              3: 1,
+                              4: 2,
+                              5: 3,
+                              6: 4,
+                              7: 5,
+                              8: 6,
+                              9: 7,
+                              10: 8,
+                              12: 9,
+                              15: 10,
+                              17: 11,
+                              18: 12,
+                              19: 13,
+                              23: 14,
+                              27: 15,
+                              31: 16,
+                              33: 17,
+                              34: 18}
         self.lut = torch.ones(256, dtype=torch.long) * self.ignore_label
 
         lst_path = os.path.join(self.base_addr, f"{self.mode}.lst")

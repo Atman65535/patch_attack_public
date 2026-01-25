@@ -1,5 +1,8 @@
 from .visualizer import Visualizer
-from .ElegantLogger import ElegantLogger
+from .metrics import MetricsKit
+from .log_handler import LogAssistant
 __all__ = [
-    "Visualizer"
+    "Visualizer",
+    "MetricsKit",
+    "LogAssistant",
 ]

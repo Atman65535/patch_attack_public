@@ -21,6 +21,7 @@ class SelfAttentionLoss:
     def __init__(self):
         self.criterion = torch.nn.MSELoss()
         self.loss = torch.tensor(0)
+        self.pix_cnt = 0
 
     def update_loss(self, attn_clean, attn_adv):
         attn_clean = attn_clean.expand(attn_adv.shape)
@@ -29,12 +30,14 @@ class SelfAttentionLoss:
                             f"expected input shapes are same, but get"
                             f"attn_adv{attn_adv.shape}, attn_clean{attn_clean.shape}")
         self.loss = self.loss + self.criterion(attn_adv, attn_clean)
+        self.pix_cnt = self.pix_cnt + attn_adv.numel()
 
-    def get_loss(self):
-        return self.loss
+    def get_pixel_loss(self):
+        return self.loss / self.pix_cnt
 
     def reset_all(self):
         self.loss = 0
+        self.pix_cnt = 0
 
 class ProcessTracker:
     """ 

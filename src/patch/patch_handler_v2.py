@@ -5,20 +5,16 @@ Date: 1/21/26
 Description:
     
 """
+import warnings
+
 import cv2
 import numpy as np
 import os
 import torch
 import random
-import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
-
-from numpy import dtype
-
 from src.utils import Visualizer
-
-
 
 class PatchHandler:
     def __init__(self, cfg):
@@ -27,25 +23,29 @@ class PatchHandler:
         Args:
             cfg: OmegaConf configdict
         """
+        self.device             = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.vis                = Visualizer()
 
-        self.optim_lr           = cfg.lr;
+        self.optim_lr           = cfg.lr
         self.optim_optim_name   = cfg.optim_name
 
         self.patch_load_from    = cfg.load_from
         self.patch_patch_size   = cfg.patch_size
-        self.patch_alpha        = cfg.alpha
         self.patch_ignore_label = cfg.ignore_label
-        self.patch_location     = cfg.location # "random" or "center"
+        self.patch_location     = cfg.location          # "random" or "center"
 
         self.eot_enable_eot     = cfg.enable_eot
+        self.patch_alpha        = cfg.alpha
         self.eot_rot_deg        = cfg.rot_deg
         self.eot_scaling        = cfg.scale
         self.eot_translate      = cfg.max_translate
 
-        self.anchor             : tuple[int, int] # h_start, w_start
+        self.anchor             = (-1, -1) # h_start, w_start
 
         # EOT Transformation Build
+        if not self.eot_enable_eot:
+            warnings.warn("EOT Transformation Disabled, Using Fixed Patch")
+
         max_pad = int((np.cos(np.pi / 4) - 1 / 2 )* self.patch_patch_size + self.eot_translate * self.patch_patch_size)
         self.eot_transform      = transforms.Compose([
             transforms.Pad(padding=max_pad, padding_mode="reflect"),
@@ -68,7 +68,7 @@ class PatchHandler:
 
         # np to tensor
         self.patch = self.patch.transpose(2, 0, 1)  # HWC -> CHW
-        self.patch = torch.tensor(self.patch, dtype=torch.float32, requires_grad=True)
+        self.patch = torch.tensor(self.patch, dtype=torch.float32, requires_grad=True, device=self.device)
         if self.patch.max() > 1.001:
             raise ValueError(f"PatchHandler: expect from 0 to 1 patch, but get {self.patch.max()}")
 
@@ -97,12 +97,17 @@ class PatchHandler:
         elif self.patch_location == "center":
             h_start = int((h - self.patch_patch_size) / 2)
             w_start = int((w - self.patch_patch_size)/ 2)
+        else:
+            raise NotImplementedError(f"Only support center and random patch mode, {self.patch_location} is invalid")
         h_end = h_start + self.patch_patch_size
         w_end = w_start + self.patch_patch_size
         self.anchor = (h_start, w_start) # This is IMPORTANT!!!!!
 
         # add patch to image
-        patch_transformed = self.eot_transform(self.patch)
+        if self.eot_enable_eot:
+            patch_transformed = self.eot_transform(self.patch)
+        else:
+            patch_transformed = self.patch
         tensor_adv = tensor.clone()
         tensor_adv[:, :, h_start:h_end, w_start:w_end] =\
             (1-self.patch_alpha) * tensor_adv[:, :, h_start:h_end, w_start:w_end] + self.patch_alpha * patch_transformed
@@ -137,16 +142,16 @@ class PatchHandler:
         with torch.no_grad():
             self.patch = torch.clamp_(self.patch, 0.00, 1.00)
 
-if __name__ == "__main__":
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
-    cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/exp/patch_config_local.py")
-    t = torch.rand(2, 3, 512, 512)* 256
-    gt = torch.full((2, 512, 512), 7)
-    gt = gt.to(torch.uint8)
-    patch = PatchHandler(cfg.patch_handler)
-    t, gt = patch.apply_patch(t, gt)
-    patch.vis.RGB_01_show(t[0].to(torch.uint8))
-    patch.vis.gt_show(gt[0])
-    patch.dump()
+#if __name__ == "__main__":
+    # import sys
+    # import os
+    # sys.path.append(os.path.dirname(os.path.dirname("/home/atman/a_workspace/mmlab/mmsegmentation")))
+    # cfg = Config.fromfile("/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/exp/patch_config_local.py")
+    # t = torch.rand(2, 3, 512, 512)* 256
+    # gt = torch.full((2, 512, 512), 7)
+    # gt = gt.to(torch.uint8)
+    # patch = PatchHandler(cfg.patch_handler)
+    # t, gt = patch.apply_patch(t, gt)
+    # patch.vis.RGB_01_show(t[0].to(torch.uint8))
+    # patch.vis.gt_show(gt[0])
+    # patch.dump()

@@ -5,18 +5,11 @@ Date: 1/22/26
 Description:
     
 """
-import warnings
-from typing import Optional
-
-import cv2
 import torch
 import torch.nn
 import torchvision.transforms as transforms
 
 import segmentation_models_pytorch as smp
-
-def invoke(*argc, **argv):
-    print("call")
 
 class Classifier:
     def __init__(self, cfg):
@@ -50,7 +43,7 @@ class Classifier:
         for param in self.model.parameters():
             param.requires_grad_(False)  # freeze
         # default
-        self.ce_loss = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_label, reduction="none")
+        self.ce_loss = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_label, reduction="none").to(self.device)
 
     def _preprocess(self, tensor):
         tensor = tensor.to(self.device)
@@ -74,47 +67,50 @@ class Classifier:
         return pred, logits
 
     def class_loss(self, seg_logits, gt, patch_anchor=None):
-        # outer_enhance=False, patch_anchor:Optional[tuple[int, int]]=None
         """
         This classifier loss enhance the loss out of Patch (Optional)
         Args:
-            outer_enhance: bool, if this is true, we will increase the weight of loss out of patch
-                           else we only calc the loss on whole image.
+            seg_logits  : the output logits of model
+            gt          : ground truth from dataset
             patch_anchor: (h_start, w_start), then we can ignore the covered area or not
                           you can find this anchor in PatchHandler Class
         Returns: the classifier loss value. NEGATIVE !!!!!!!!!!!!!!!!!!!!!!!
         """
         loss_map = self.ce_loss(seg_logits.to(self.device), gt.to(self.device))
         # TODO add this loss enhance method
-        if (self.outer_enhance): # here we except the patched area
+        if self.outer_enhance: # here we except the patched area
             if patch_anchor is None:
                 raise   KeyError("When you want add outer enhance, send in patch anchor from PatchHandler")
             h_start = patch_anchor[0]
             w_start = patch_anchor[1]
             h_end = h_start + self.patch_size
             w_end = w_start + self.patch_size
-            weight_mask = torch.ones_like(loss_map)
-            weight_mask[:, h_start:h_end, w_start:w_end] = self.patch_supress_weight
-            loss = loss_map * weight_mask
+            patch_pixels = loss_map[:, h_start:h_end, w_start:w_end].numel()
+            outer_pixels = loss_map.numel() - patch_pixels
 
+            patch_loss = loss_map[:, h_start:h_end, w_start:w_end].sum()
+            outer_loss = loss_map.sum() - patch_loss
+            loss = patch_loss * self.patch_supress_weight / patch_pixels + outer_loss / outer_pixels
+        else:
+            loss = loss_map.mean()
         # Negative ! Negative !
-        return -1  *  loss_map.mean() * self.loss_weight
+        return -1  *  loss * self.loss_weight
 
 if __name__ == "__main__":
-    from src.utils import Visualizer
-    vis = Visualizer()
-    from src.datasets.rellis_pytorch import Rellis3DDatasetTorch
-    from torch.utils.data import DataLoader
-    from mmengine import Config
-    cfg = Config.fromfile("/src/configs/patch_config_local.py")
-    ds = Rellis3DDatasetTorch(crop_sizeHW=(512, 512))
-    dl = DataLoader(ds, batch_size=1)
-    classifier = Classifier(cfg.classifier_cfg)
-    for img, gt in dl:
-        pred, logits = classifier.inference(img)
-        vis.gt_show(gt[0])
-        vis.gt_show(pred[0])
-        vis.RGB_01_show(img[0])
-        print(f"loss = {classifier.class_loss(logits, gt)}")
-        break;
+    # from src.utils import Visualizer
+    # vis = Visualizer()
+    # from src.datasets.rellis_pytorch import Rellis3DDatasetTorch
+    # from torch.utils.data import DataLoader
+    # from mmengine import Config
+    # cfg = Config.fromfile("/src/configs/patch_config_local.py")
+    # ds = Rellis3DDatasetTorch(crop_sizeHW=(512, 512))
+    # dl = DataLoader(ds, batch_size=1)
+    # classifier = Classifier(cfg.classifier_cfg)
+    # for img, gt in dl:
+    #     pred, logits = classifier.inference(img)
+    #     vis.gt_show(gt[0])
+    #     vis.gt_show(pred[0])
+    #     vis.RGB_01_show(img[0])
+    #     print(f"loss = {classifier.class_loss(logits, gt)}")
+    #     break;
     print("pass validation")

@@ -118,7 +118,7 @@ class DiffLossTools:
             latent = ddim_denoise(self.model, latent, uncond_emb, cond_emb, time, self.guidance_scale)
         reset_attention_control(self.model)
 
-        self_attn_loss = self.attn_catcher.self_attn_loss.loss
+        self_attn_loss = self.attn_catcher.self_attn_loss.get_pixel_loss()
         adv_cross_map = self.attn_catcher.extract_attn_map(("up", "down"), is_cross=True)[1, :, :, 1:token_len - 1]
         clean_self_map, adv_self_map = self.attn_catcher.extract_attn_map(stages=("up", "down"), is_cross=False)
         # self.vis.show_cross_attention_map(adv_cross_map, "cross")
@@ -126,7 +126,7 @@ class DiffLossTools:
         # self.vis.show_self_attention_map(clean_self_map,"cleanself")
         self.attn_catcher.reset_all()
 
-        cross_attn_loss = adv_cross_map.var()
+        cross_attn_loss = adv_cross_map.var() / adv_cross_map.numel()
         return self.self_weight*self_attn_loss, self.cross_weight* cross_attn_loss, clean_self_map, adv_self_map, adv_cross_map
 
     def get_prompt_from_gt(self, gt):

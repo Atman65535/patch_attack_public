@@ -32,7 +32,7 @@ ckpt_list.append(ckpt_upp)
 
 dataset = Rellis3DDatasetTorch(crop_sizeHW=(1024, 1024), mode="test")
 norm = transforms.Compose([Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-metric = MulticlassJaccardIndex(num_classes=19, average = "weighted", ignore_index=255).to("cuda:0")
+metric = MulticlassJaccardIndex(num_classes=19, average = "weighted", ignore_index=255).to("cuda")
 
 for model, ckpt in zip(model_list, ckpt_list):
     state_dict = torch.load(ckpt, map_location="cpu")

@@ -18,12 +18,14 @@ batch_size         : 2
 num_workers        : 4
 patch_size         : 128
 crop_sizeHW        : [512, 512]
+log_iter           : 10
+gradient_storage   : 10
 
 hyper_params :
   # Loss Control
   classifier_loss_weight : 1
-  self_loss_weight : 30
-  cross_loss_weight : 1e5
+  self_loss_weight : 5e7
+  cross_loss_weight : 5e7
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8
@@ -31,7 +33,7 @@ hyper_params :
   mean : [0.485, 0.456, 0.406]
   std  : [0.229, 0.224, 0.225]
   # patch
-  patch_alpha : 0.5
+  patch_alpha : 0.1  # lower alpha means lower visibility
   # diffusion
   intermediate_steps : 1
   RFES_edge : 16 # 0 16 32 or more.
@@ -41,6 +43,13 @@ paths :
   dataset_base_addr : "/home/atman/a_workspace/mmlab/mmsegmentation/data/rellis3d"
   model_pretrained : "/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 
+metrics_cfg:
+  # MulticlassJaccardIndex and MAcc(ASR)
+  num_classes: 19
+  average: "weighted" # No "macro" bro
+  ignore_index: ${ignore_label}
+  # LPIPS
+  lpips_net: "alex"
 
 dataset_cfg:
   ignore_label: ${ignore_label}
@@ -52,7 +61,6 @@ dataloader_cfg :
   shuffle: False
   batch_size: ${batch_size}
   num_workers: ${num_workers}
-
 
 classifier_cfg :
   # model
@@ -76,6 +84,7 @@ classifier_cfg :
 
   # This version only support RGB 3 ch Patch
   # with FIXED transparency as hyperparameter
+
 patch_handler_cfg :
   # optim settings: self.optim_
   lr : ${lr}
@@ -84,15 +93,14 @@ patch_handler_cfg :
   # Patch geometry
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
+  ignore_label: ${ignore_label}
+  location : "center"
   # 0.05 patch + (1-005) Img
   alpha : ${hyper_params.patch_alpha}
-  enable_eot : False
+  enable_eot : True
   rot_deg : 20
   scale : [0.8, 1.2]
   max_translate : 0.05
-  location : "center"
-  ignore_label : ${ignore_label}
-
 
 diffusion_cfg :
   batch_size_of_diffusion: 1 # 每次输入单张图进入Pipeline
