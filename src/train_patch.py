@@ -78,6 +78,7 @@ def main():
                 if log_ass.global_steps % cfg.log_iter == 0:
                     logger.info(
                         f"Step: {log_ass.global_steps:05d}" +
+                        f"| ASR: {metrics.asr_score(pred, gt_clean):.4f}" +
                         f"| LPIPS: {metrics.lpips_score(img_clean, img_adv):.4f}" +
                         f"| mIoU: {metrics.miou_score(pred, gt_clean):.4f} " +
                         f"| ClLoss: {log_ass.total_classify_loss / cfg.log_iter:.4f} " +
