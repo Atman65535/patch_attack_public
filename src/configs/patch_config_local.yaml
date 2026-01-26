@@ -12,14 +12,14 @@ exp_name: "Entity-Patch-Exp"
 model_arch: "UNet++"
 
 epochs             : 30
-lr                 : 0.01
+lr                 : 1.0
 ignore_label       : 255
 batch_size         : 2
 num_workers        : 4
 patch_size         : 128
 crop_sizeHW        : [512, 512]
-log_iter           : 10
-gradient_storage   : 10
+log_iter           : 1
+gradient_storage   : 2
 
 hyper_params :
   # Loss Control
@@ -33,15 +33,15 @@ hyper_params :
   mean : [0.485, 0.456, 0.406]
   std  : [0.229, 0.224, 0.225]
   # patch
-  patch_alpha : 0.1  # lower alpha means lower visibility
+  patch_alpha : 0.5  # lower alpha means lower visibility
   # diffusion
   intermediate_steps : 1
   RFES_edge : 16 # 0 16 32 or more.
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/a_workspace/mmlab/mmsegmentation/data/rellis3d"
-  model_pretrained : "/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "/home/atman/a_workspace/patch_attack_public/data/rellis3d"
+  model_pretrained : "/home/atman/a_workspace/patch_attack_public/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 
 metrics_cfg:
   # MulticlassJaccardIndex and MAcc(ASR)

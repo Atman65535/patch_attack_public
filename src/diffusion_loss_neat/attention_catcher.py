@@ -16,7 +16,7 @@ class SelfAttentionLoss:
     This module contains a self attention loss calculation implementation
     Loss function is MSE function
     Components: One loss container, one function method.
-    这里的loss就是self attention MSE loss。
+    the loss here is MSE loss。
     """
     def __init__(self):
         self.criterion = torch.nn.MSELoss()
@@ -41,7 +41,7 @@ class SelfAttentionLoss:
 
 class ProcessTracker:
     """ 
-    UNet 进程跟踪。服务于 AttentionCatcher
+    UNet Process tracker for attention catcher
     """
     def __init__(self,
                  total_attn_invokes=32, # contains self and cross，亲自数过的
