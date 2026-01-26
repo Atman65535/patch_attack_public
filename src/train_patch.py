@@ -18,7 +18,7 @@ import wandb
 from loguru import logger
 import time
 
-config_file = "/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/patch_config_local.yaml"
+config_file = "/home/atman/a_workspace/patch_attack_public/src/configs/patch_config_local.yaml"
 cfg = OmegaConf.load(config_file)
 
 
