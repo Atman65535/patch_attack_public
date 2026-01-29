@@ -31,6 +31,7 @@ class PatchHandler:
 
         self.patch_load_from    = cfg.load_from
         self.patch_patch_size   = cfg.patch_size
+        self.rfes_edge          = cfg.rfes_edge
         self.patch_ignore_label = cfg.ignore_label
         self.patch_location     = cfg.location          # "random" or "center"
 
@@ -91,11 +92,11 @@ class PatchHandler:
             raise RuntimeError(f"Expected input BCHW tensor, but get ndim {tensor.ndim}")
         self._check_range(tensor)
         b, c, h, w = tensor.shape
-        h_max = h - self.patch_patch_size
-        w_max = w - self.patch_patch_size
+        h_max = h - self.patch_patch_size - self.rfes_edge - 1 # extreme case : rfes at edge of image
+        w_max = w - self.patch_patch_size - self.rfes_edge - 1
         if self.patch_location == 'random':
-            h_start = random.randint(0, h_max)
-            w_start = random.randint(0, w_max)
+            h_start = random.randint(self.rfes_edge + 1, h_max)
+            w_start = random.randint(self.rfes_edge + 1, w_max)
         elif self.patch_location == "center":
             h_start = int((h - self.patch_patch_size) / 2)
             w_start = int((w - self.patch_patch_size)/ 2)

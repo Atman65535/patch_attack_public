@@ -77,30 +77,35 @@ class LMAGPipeline:
     def rfes_crop(self, tensor, anchor = None):
         """
         input : Standard image batch of dataset, range [0, 1], float32
+        anchor: hstart, wstart. this is the start point of patch, not rfes field
+        Comment: anchor always valid. This is Implemented in patch handler
         Returns: Batch, (B, C, H, W), range [0, 1] for L-MAG
         """
         if tensor.ndim != 4:
             raise TypeError(f"expected tensor BCHW, but get ndim={tensor.ndim}")
         _, _, h, w = tensor.shape
         diff_tensor = tensor.clone()
-        if anchor is None:
-            return diff_tensor
+        assert anchor is not None, "Anchor in rfes is None, please send in an anchor"
 
-        if anchor[0] - self.rfes_edge  <= 0 or anchor[1] - self.rfes_edge <= 0: # left out
-            h_start = anchor[0]
-            w_start = anchor[1]
-            h_end = h_start + self.resolution
-            w_end = w_start + self.resolution
-        elif anchor[0] + self.resolution + self.rfes_edge >= h or anchor[1] + self.resolution + self.rfes_edge >= w: # right out
-            h_start = anchor[0] - 2 * self.rfes_edge
-            w_start = anchor[1] - 2 * self.rfes_edge
-            h_end = h_start + self.resolution
-            w_end = w_start + self.resolution
-        else:
-            h_start = anchor[0] - self.rfes_edge
-            w_start = anchor[1] - self.rfes_edge
-            h_end = h_start + self.resolution
-            w_end = w_start + self.resolution
+        # if anchor[0] - self.rfes_edge  <= 0 or anchor[1] - self.rfes_edge <= 0: # left out
+        #     h_start = anchor[0]
+        #     w_start = anchor[1]
+        #     h_end = h_start + self.resolution
+        #     w_end = w_start + self.resolution
+        # elif anchor[0] + self.resolution + self.rfes_edge >= h or anchor[1] + self.resolution + self.rfes_edge >= w: # right out
+        #     h_start = anchor[0] - 2 * self.rfes_edge
+        #     w_start = anchor[1] - 2 * self.rfes_edge
+        #     h_end = h_start + self.resolution
+        #     w_end = w_start + self.resolution
+        # else:
+        #     h_start = anchor[0] - self.rfes_edge
+        #     w_start = anchor[1] - self.rfes_edge
+        #     h_end = h_start + self.resolution
+        #     w_end = w_start + self.resolution
+        h_start = anchor[0] - self.rfes_edge
+        w_start = anchor[1] - self.rfes_edge
+        h_end = h_start + self.resolution
+        w_end = w_start + self.resolution
         return diff_tensor[:, :, h_start:h_end, w_start:w_end]
 
     def get_gt_in_patch(self, tensor, anchor):

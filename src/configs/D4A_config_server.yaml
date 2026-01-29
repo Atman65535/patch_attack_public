@@ -100,6 +100,7 @@ patch_handler_cfg :
   # Patch geometry
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
+  rfes_edge: ${hyper_params.RFES_edge}
   ignore_label: ${ignore_label}
   location : "random"
   # 0.05 patch + (1-005) Img
