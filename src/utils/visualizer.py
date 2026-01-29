@@ -107,7 +107,7 @@ class Visualizer:
         plt.tight_layout()
         plt.show()
 
-    def visualize_cross_attn_map(self, attn_map, file_name=None):
+    def visualize_cross_attn_map(self, attn_map, file_name=None, prompt=None):
         """
         Args:
             attn_map: attention map from attention pipeline
@@ -124,6 +124,10 @@ class Visualizer:
         tmp_img = cv2.cvtColor(tmp_img, cv2.COLOR_RGB2BGR)
         tmp_img = cv2.applyColorMap(tmp_img, cv2.COLORMAP_JET)
         tmp_img = cv2.resize(tmp_img, output_size, interpolation=cv2.INTER_NEAREST)
+        if prompt:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            # 参数：图像, 文字, 位置(x,y), 字体, 缩放, 颜色(B,G,R), 厚度
+            cv2.putText(tmp_img, prompt, (5, 20), font, 0.6, (0, 255, 0), 2)
         if file_name is not None:
             cv2.imwrite(f"./heat_map/{file_name}.png", tmp_img)
         else:

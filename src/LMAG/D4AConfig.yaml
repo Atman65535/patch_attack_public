@@ -1,0 +1,39 @@
+#File: D4AConfig.yaml
+#Author: Atman
+#Date: 1/27/26
+# ******************** Config of D4A ******************** #
+#
+# ******************************************************* #
+
+diffusion_model_path : "/home/atman/a_workspace/D4A/models/runwayml/stable-diffusion-v1-5"
+IP_Adapter_path : "/home/atman/a_workspace/D4A/models/h94/IP-Adapter"
+
+timestep: 200
+
+enable_cfg: True
+attn_cfg: 3
+
+target_downscale: 16
+
+img_height: 256
+img_width: 256
+sigmas: null
+eta: 0
+guidance_rescale: 0.0
+lora_scale: null
+clip_skip: null
+
+
+confidence_threshold: 0.7
+
+self_criterion: "CosineSimilarity"
+self_criterion_kwargs:
+  dim: -1
+
+cross_criterion: "var"
+ip_stage: "down"
+txt_stage: null
+self_pca_layers: 5
+
+txt_mode: "max" # mean
+ip_token_idx: 1

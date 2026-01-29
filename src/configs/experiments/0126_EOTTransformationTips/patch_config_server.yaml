@@ -8,24 +8,24 @@
 # ******************** Train Settings ******************** #
 
 project: "Rellis3D-Adversarial-Attack"
-exp_name: "Entity-Patch-Exp"
+exp_name: "Only ClLoss & Self Loss"
 model_arch: "UNet++"
 
 epochs             : 30
-lr                 : 1.0
+lr                 : 0.01 #05
 ignore_label       : 255
 batch_size         : 2
 num_workers        : 4
-patch_size         : 128
-crop_sizeHW        : [512, 512]
-log_iter           : 1
-gradient_storage   : 2
+patch_size         : 256
+crop_sizeHW        : [1024, 1024]
+log_iter           : 20
+gradient_storage   : 5
 
 hyper_params :
   # Loss Control
   classifier_loss_weight : 1
-  self_loss_weight : 5e7
-  cross_loss_weight : 5e7
+  self_loss_weight : 1e8 # 5e9
+  cross_loss_weight : 0 #5e8
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8
@@ -33,15 +33,15 @@ hyper_params :
   mean : [0.485, 0.456, 0.406]
   std  : [0.229, 0.224, 0.225]
   # patch
-  patch_alpha : 0.5  # lower alpha means lower visibility
+  patch_alpha : 0.25  # lower alpha means lower visibility
   # diffusion
-  intermediate_steps : 1
+  intermediate_steps : 3
   RFES_edge : 16 # 0 16 32 or more.
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/a_workspace/patch_attack_public/data/rellis3d"
-  model_pretrained : "/home/atman/a_workspace/patch_attack_public/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "/home/atman/home/D4A/data/rellis3d"
+  model_pretrained : "/home/atman/home/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 
 metrics_cfg:
   # MulticlassJaccardIndex and MAcc(ASR)
@@ -80,7 +80,7 @@ classifier_cfg :
   mean    : ${hyper_params.mean} # ImageNet Pretrained RGB
   std     : ${hyper_params.std}
   # preprocessor
-  
+
 
   # This version only support RGB 3 ch Patch
   # with FIXED transparency as hyperparameter

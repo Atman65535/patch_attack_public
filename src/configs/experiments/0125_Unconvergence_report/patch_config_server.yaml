@@ -39,8 +39,8 @@ hyper_params :
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/home/patch_attack_public/data/rellis3d"
-  model_pretrained : "/home/atman/home/patch_attack_public/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "/home/atman/home/D4A/data/rellis3d"
+  model_pretrained : "/home/atman/home/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
 
 metrics_cfg:
   # MulticlassJaccardIndex and MAcc(ASR)

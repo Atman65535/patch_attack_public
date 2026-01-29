@@ -17,7 +17,7 @@ from .attention_catcher import AttentionCatcher
 from .diffuison_utils import (diffusion_image_checker, ddim_denoise, build_diffusion_model,
                               build_conditional_embeddings, build_unconditional_embeddings)
 
-
+@torch.no_grad()
 def _get_top2_labels(gt_map: torch.Tensor,
                      ignore_label=255,
                      thres=0.5):
@@ -54,33 +54,39 @@ def _get_top2_labels(gt_map: torch.Tensor,
 
 
 class DiffLossTools:
-    """ 
-    主要对接主程序的类，包括整个加噪去噪得到loss的流程
-    """
+    """full Pipeline of Attention but in v0.1.0"""
     def __init__(self,
                  cfg):
-        if cfg.label_dict is None:
-            raise ValueError("DiffLossTools: label dict must not none!")
+        if cfg.diffusion_arch is "classic":
+            if cfg.label_dict is None:
+                raise ValueError("DiffLossTools: label dict must not none!")
 
 
-        self.RFES_edge = cfg.RFES_edge
-        self.resolution = cfg.diffusion_resolution + 2 * self.RFES_edge
-        self.label_dict = cfg.label_dict
-        self.attn_catcher = AttentionCatcher(batch_size=cfg.batch_size_of_diffusion * 2,
-                                             resolution=self.resolution,
-                                             target_map_resolution=None,
-                                             checked=False)
-        self.attn_catcher.reset_all()
+            self.RFES_edge = cfg.RFES_edge
+            self.resolution = cfg.diffusion_resolution + 2 * cfg.RFES_edge
+            self.label_dict = cfg.label_dict
+            self.attn_catcher = AttentionCatcher(batch_size=cfg.batch_size_of_diffusion * 2,
+                                                 resolution=self.resolution,
+                                                 target_map_resolution=None,
+                                                 checked=False)
+            self.attn_catcher.reset_all()
 
-        self.batch_size = cfg.batch_size_of_diffusion
-        self.num_inference_steps = cfg.num_inference_steps
-        self.guidance_scale = cfg.guidance_scale
-        self.intermediate_steps = cfg.intermediate_steps
-        self.self_weight = cfg.self_weight
-        self.cross_weight = cfg.cross_weight
-        self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        self.model = build_diffusion_model()
-        self.vis = Visualizer()
+            self.batch_size = cfg.batch_size_of_diffusion
+            self.num_inference_steps = cfg.num_inference_steps
+            self.guidance_scale = cfg.guidance_scale
+            self.intermediate_steps = cfg.intermediate_steps
+            self.self_weight = cfg.self_weight
+            self.cross_weight = cfg.cross_weight
+            self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+            self.model = build_diffusion_model()
+            self.vis = Visualizer()
+        elif cfg.diffusion_arch == "L-MAG" or cfg.diffusion_arch == "LMAG":
+            self.RFES_edge = cfg.RFES_edge
+            self.resolution = cfg.diffusion_resolution
+            self.label_dict = cfg.label_dict
+            self.vis = Visualizer()
+        else:
+            raise NotImplementedError(f"No implementation for {cfg.diffusion_arch}")
 
     def get_loss(self, clean, adv, gt):
         self.attn_catcher.reset_all()
@@ -130,9 +136,6 @@ class DiffLossTools:
         return self.self_weight*self_attn_loss, self.cross_weight* cross_attn_loss, clean_self_map, adv_self_map, adv_cross_map
 
     def get_prompt_from_gt(self, gt):
-        """
-        从gt_map中获取prompt
-        """
         top1, top2 = _get_top2_labels(gt)
         if top2:
             return self.label_dict[top1] + " and " + self.label_dict[top2]

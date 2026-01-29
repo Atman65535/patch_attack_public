@@ -76,5 +76,20 @@ class LogAssistant:
             "Monitor/Status" : self.status_table
         }
         wandb.log(log_dict, step=self.global_steps)
+
+    @torch.no_grad()
+    def wandb_image_push_aug(self, img_adv, pred, gt_clean, patch, clean_self, adv_self, cross_attn_ip, cross_attn_txt):
+        log_dict = {
+            "Visuals/CleanImage": wandb.Image(img_adv.permute(1, 2, 0).detach().cpu().numpy()),
+            "Visuals/Predictions": wandb.Image(self.vis.gt_show(pred,return_array=True)),
+            "Visuals/GroundTruth": wandb.Image(self.vis.gt_show(gt_clean, return_array=True)),
+            "Visuals/Raw_Patch": wandb.Image(patch.permute(1, 2, 0).detach().cpu().numpy(), caption="Generated Patch Texture"),
+            "Visuals/Self_Attention_clean": wandb.Image(self.vis.visualize_self_attn_map(clean_self), caption="self attn clean"),
+            "Visuals/Self_Attention_adv": wandb.Image(self.vis.visualize_self_attn_map(adv_self), caption="self attn adv"),
+            "Visuals/Cross_Attention_IP": wandb.Image(self.vis.visualize_cross_attn_map(cross_attn_ip), caption="cross attn"),
+            "Visuals/Cross_Attention_txt": wandb.Image(self.vis.visualize_cross_attn_map(cross_attn_txt), caption="cross attn"),
+            "Monitor/Status" : self.status_table
+        }
+        wandb.log(log_dict, step=self.global_steps)
 if __name__ == "__main__":
     print("pass validation")

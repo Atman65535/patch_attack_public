@@ -48,7 +48,7 @@ class MetricsKit:
 #     gt = pred.clone().to("cuda")
 #     clean = torch.rand(3, 255, 255).to("cuda")
 #     import omegaconf
-#     cfg = omegaconf.OmegaConf.load("/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/patch_config_local.yaml")
+#     cfg = omegaconf.OmegaConf.load("/home/atman/a_workspace/mmlab/mmsegmentation/src/configs/D4A_config_local.yaml")
 #     metrics = MetricsKit(cfg.metrics_cfg)
 #     print(metrics.lpips_score(clean, clean))
 #     print(metrics.asr_score(pred, gt))

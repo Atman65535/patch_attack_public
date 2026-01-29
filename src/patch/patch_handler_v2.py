@@ -53,6 +53,8 @@ class PatchHandler:
             transforms.RandomAffine(degrees=0, translate=(self.eot_translate, self.eot_translate)),
             transforms.CenterCrop(self.patch_patch_size),
             transforms.RandomResizedCrop(size=self.patch_patch_size, scale=self.eot_scaling),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomHorizontalFlip(p=0.5),
         ])
 
         # read patch or generate it, get float32 type

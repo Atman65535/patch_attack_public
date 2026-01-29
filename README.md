@@ -19,13 +19,13 @@ pip install -e .
 
 ### Train SMP Models:
 ~~~shell
-cd ./patch_attack_public
+cd ./D4A
 python src/train_smp.py
 ~~~
 
 ### Train Our Patch
 the cwd should be our project root directory.
 ~~~shell
-cd ./patch_attack_public
+cd ./D4A
 python src/train_patch.py
 ~~~

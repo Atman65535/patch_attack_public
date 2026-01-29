@@ -1,4 +1,12 @@
+"""
+File: train_patch_D4A.py
+Author: Atman
+Date: 1/29/26
+Description:
+    
+"""
 import sys
+import os
 
 import torch
 from omegaconf import OmegaConf
@@ -9,16 +17,19 @@ from src.patch                      import PatchHandler
 from src.classifier_pipeline        import Classifier
 from src.datasets.rellis_pytorch    import Rellis3DDatasetTorch
 from src.diffusion_loss_neat.diff_loss_pipeline \
-                                    import DiffLossTools
+    import DiffLossTools
 from src.utils                      import MetricsKit
 from src.utils                      import LogAssistant
+from src.LMAG.LMAGPipeline import LMAGPipeline
 torch.autograd.set_detect_anomaly(True)
 
 import wandb
 from loguru import logger
 import time
+os.chdir('/home/atman/a_workspace/D4A')
 
-config_file = "/home/atman/a_workspace/patch_attack_public/src/configs/D4A_config_local.yaml"
+OmegaConf.register_new_resolver("eval", eval)
+config_file = "./src/configs/D4A_config_local.yaml"
 cfg = OmegaConf.load(config_file)
 
 
@@ -34,7 +45,8 @@ def main():
                                          num_workers=cfg.dataloader_cfg.num_workers)
     classifier              = Classifier(cfg.classifier_cfg)
     patch_handler           = PatchHandler(cfg.patch_handler_cfg)
-    diffusion_loss_pipeline = DiffLossTools(cfg.diffusion_cfg)
+    # diff_tools = DiffLossTools(cfg.diffusion_cfg)
+    diffusion_pipeline = LMAGPipeline(cfg.LMAG_cfg)
     metrics                 = MetricsKit(cfg.metrics_cfg)
     log_ass                 = LogAssistant(cfg)
     gradient_cnt            = 0
@@ -53,14 +65,14 @@ def main():
             log_ass.total_loss += classifier_loss.item()
             log_ass.total_classify_loss += classifier_loss.item()
 
-            diff_clean  = diffusion_loss_pipeline.std_image_to_diffusion_format(img_clean, anchor)
-            diff_adv    = diffusion_loss_pipeline.std_image_to_diffusion_format(img_adv, anchor)
-            diff_gt     = diffusion_loss_pipeline.get_gt_in_patch(gt_clean, anchor)
-            clean_self, adv_self, cross_attn = None, None, None
+            diff_clean  = diffusion_pipeline.rfes_crop(img_clean, anchor)
+            diff_adv    = diffusion_pipeline.rfes_crop(img_adv, anchor)
+            diff_gt     = diffusion_pipeline.get_gt_in_patch(gt_clean, anchor)
+            pack = (None, None, None, None)
             for clean, adv, label in zip(diff_clean, diff_adv, diff_gt):
                 clean = clean.unsqueeze(0) # diffusion batch_size = 1, so align to BCHW
                 adv = adv.unsqueeze(0)
-                self_loss, cross_loss, clean_self, adv_self, cross_attn = diffusion_loss_pipeline.get_loss(clean, adv, label)
+                self_loss, cross_loss, clean_self, pack = diffusion_pipeline.get_loss(clean, adv, label)
                 loss_iter = loss_iter + self_loss + cross_loss
                 log_ass.total_loss += self_loss.item() + cross_loss.item()
                 log_ass.total_self_loss += self_loss.item()
@@ -86,10 +98,10 @@ def main():
                         f"| CrossLoss: {log_ass.total_cross_loss / cfg.log_iter:.4f}")
                     log_ass.wandb_loss_push()
                 if log_ass.global_steps % (cfg.log_iter * 2) == 0:
-                    log_ass.status_table.add_data(log_ass.global_steps, diffusion_loss_pipeline.get_prompt_from_gt(diff_gt[0]))
-                    log_ass.wandb_image_push(img_adv[0], pred[0], gt_clean[0],
+                    log_ass.status_table.add_data(log_ass.global_steps, diffusion_pipeline.cur_prompt)
+                    log_ass.wandb_image_push_aug(img_adv[0], pred[0], gt_clean[0],
                                              patch_handler.patch,
-                                             clean_self, adv_self, cross_attn)
+                                             **pack)
 
                     log_ass.clear()
         patch_handler.dump(path=f"./patch/patch_{e}.png")
