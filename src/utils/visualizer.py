@@ -116,22 +116,38 @@ class Visualizer:
         Returns: ndarray [HWC], you can use cv2 or mpl to visualize it
         """
         output_size = (256, 256)
-        scale = attn_map.shape[0]
-        tmp_img = torch.mean(attn_map, dim=-1)# expand to image
-        tmp_img = tmp_img * 255 / tmp_img.max()
-        tmp_img = tmp_img.to(torch.uint8)
-        tmp_img = tmp_img.detach().cpu().unsqueeze(-1).expand(scale, scale, 3).numpy()
-        tmp_img = cv2.cvtColor(tmp_img, cv2.COLOR_RGB2BGR)
-        tmp_img = cv2.applyColorMap(tmp_img, cv2.COLORMAP_JET)
-        tmp_img = cv2.resize(tmp_img, output_size, interpolation=cv2.INTER_NEAREST)
-        if prompt:
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            # 参数：图像, 文字, 位置(x,y), 字体, 缩放, 颜色(B,G,R), 厚度
-            cv2.putText(tmp_img, prompt, (5, 20), font, 0.6, (0, 255, 0), 2)
-        if file_name is not None:
-            cv2.imwrite(f"./heat_map/{file_name}.png", tmp_img)
-        else:
-            return tmp_img
+        if attn_map.ndim == 3:
+            scale = attn_map.shape[0]
+            res_map = torch.mean(attn_map, dim=-1)# expand to image
+            res_map = res_map * 255 / res_map.max()
+            res_map = res_map.to(torch.uint8)
+            res_map = res_map.detach().cpu().unsqueeze(-1).expand(scale, scale, 3).numpy()
+            res_map = cv2.cvtColor(res_map, cv2.COLOR_RGB2BGR)
+            res_map = cv2.applyColorMap(res_map, cv2.COLORMAP_JET)
+            res_map = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
+            if prompt:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                # 参数：图像, 文字, 位置(x,y), 字体, 缩放, 颜色(B,G,R), 厚度
+                cv2.putText(res_map, prompt, (5, 20), font, 0.6, (0, 255, 0), 2)
+            if file_name is not None:
+                cv2.imwrite(f"./heat_map/{file_name}.png", res_map)
+            else:
+                return res_map
+        elif attn_map.ndim == 2:
+            if torch.is_tensor(attn_map):
+                res_map = attn_map.detach().cpu().numpy()
+            res_map = (res_map - res_map.min()) / (res_map.max() - res_map.min() + 1e-8)
+            res_map = (res_map * 255).astype(np.uint8)
+            res_map = cv2.applyColorMap(res_map, cv2.COLORMAP_JET)
+            res_map = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
+            if prompt:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                # 参数：图像, 文字, 位置(x,y), 字体, 缩放, 颜色(B,G,R), 厚度
+                cv2.putText(res_map, prompt, (5, 20), font, 0.6, (0, 255, 0), 2)
+            if file_name is not None:
+                cv2.imwrite(f"./heat_map/{file_name}.png", res_map)
+            else:
+                return res_map
 
     def visualize_self_attn_map(self, attn_map, file_name=None):
         """
@@ -144,23 +160,35 @@ class Visualizer:
         Returns: ndarray. [HWC], 256 x 256, attention map
         """
         output_size = (256, 256)
-        if attn_map.shape[-1] != attn_map.shape[0] * attn_map.shape[1]:
-            raise ValueError(f"expected attention area is a square! get {attn_map.shape}")
-        if torch.is_tensor(attn_map):
-            attn_map = attn_map.detach().cpu().numpy()
-        h, w, c = attn_map.shape
-        flat_map = attn_map.reshape(attn_map.shape[-1], attn_map.shape[-1]) # a big
-        u, s, vh = np.linalg.svd(flat_map - np.mean(flat_map, axis=1, keepdims=True))
-        res_map = u[:, 0].reshape(h, w)
-        res_map = (res_map - res_map.min()) / (res_map.max() - res_map.min() + 1e-8)
-        res_map = (res_map * 255).astype(np.uint8)
-        res_map = np.stack([res_map] * 3, axis=-1)
-        vis_large = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
-        color_map = cv2.applyColorMap(vis_large, cv2.COLORMAP_JET)
-        if file_name is not None:
-            cv2.imwrite(f"./heat_map/{file_name}.png", color_map)
-        else:
-            return color_map
+        if attn_map.ndim == 3:
+            if attn_map.shape[-1] != attn_map.shape[0] * attn_map.shape[1]:
+                raise ValueError(f"expected attention area is a square! get {attn_map.shape}")
+            if torch.is_tensor(attn_map):
+                attn_map = attn_map.detach().cpu().numpy()
+            h, w, c = attn_map.shape
+            flat_map = attn_map.reshape(attn_map.shape[-1], attn_map.shape[-1]) # a big
+            u, s, vh = np.linalg.svd(flat_map - np.mean(flat_map, axis=1, keepdims=True))
+            res_map = u[:, 0].reshape(h, w)
+            res_map = (res_map - res_map.min()) / (res_map.max() - res_map.min() + 1e-8)
+            res_map = (res_map * 255).astype(np.uint8)
+            res_map = np.stack([res_map] * 3, axis=-1)
+            res_map = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
+            res_map = cv2.applyColorMap(res_map, cv2.COLORMAP_JET)
+            if file_name is not None:
+                cv2.imwrite(f"./heat_map/{file_name}.png", res_map)
+            else:
+                return res_map
+        elif attn_map.ndim == 2:
+            if torch.is_tensor(attn_map):
+                res_map = attn_map.detach().cpu().numpy()
+            res_map = (res_map - res_map.min()) / (res_map.max() - res_map.min() + 1e-8)
+            res_map = (res_map * 255).astype(np.uint8)
+            res_map = cv2.applyColorMap(res_map, cv2.COLORMAP_JET)
+            res_map = cv2.resize(res_map, output_size, interpolation=cv2.INTER_NEAREST)
+            if file_name is not None:
+                cv2.imwrite(f"./heat_map/{file_name}.png", color_map)
+            else:
+                return res_map
 
 if __name__ == "__main__":
     print("pass validation")

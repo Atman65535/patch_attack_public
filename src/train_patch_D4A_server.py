@@ -24,10 +24,10 @@ from src.LMAG.LMAGPipeline import LMAGPipeline
 torch.autograd.set_detect_anomaly(True)
 from loguru import logger
 
-os.chdir('/home/atman/a_workspace/D4A')
+os.chdir('/home/atman/home/D4A')
 
 OmegaConf.register_new_resolver("eval", eval)
-config_file = "./src/configs/D4A_config_local.yaml"
+config_file = "./src/configs/D4A_config_server.yaml"
 cfg = OmegaConf.load(config_file)
 
 
@@ -112,7 +112,7 @@ def main():
                     log_ass.status_table.add_data(log_ass.global_steps, diffusion_pipeline.cur_prompt)
                     log_ass.wandb_image_push_aug(img_adv[0], pred[0], gt_clean[0],
                                              patch_handler.patch,
-                                             **pack)
+                                             pack[0], pack[1], pack[2], pack[3])
 
                     log_ass.clear()
         patch_handler.dump(path=f"./patch/patch_{e}.png")
