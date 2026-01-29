@@ -94,7 +94,7 @@ class Classifier:
         else:
             loss = loss_map.mean()
         # Negative ! Negative !
-        return -1  *  loss * self.loss_weight
+        return -1  *  loss # * self.loss_weight # weights are processed outer scope
 
 if __name__ == "__main__":
     # from src.utils import Visualizer

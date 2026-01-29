@@ -15,6 +15,19 @@ pip install -r requirements.txt
 pip install -e .
 ~~~
 
+## Dataset and Weights
+We don't use safety checker, but the download command below will download it automatically
+~~~shell
+cd ./D4A
+mkdir models
+huggingface-cli download runwayml/stable-diffusion-v1-5 --local-dir ./models/runwayml/stable-diffusion-v1-5 --local-dir-use-symlinks False
+huggingface-cli download h94/IP-Adapter --include "models/ip-adapter_sd15.bin" "image_encoder" --local-dir ./models/h94/IP-Adapter --local-dir-use-symlinks False
+
+mkdir data
+ln -s <your rellis3d dataset root> ./data/rellis3d
+mv <image prompts dir> ./data/img_prompts
+~~~
+
 ## Execute
 
 ### Train SMP Models:

@@ -22,10 +22,8 @@ from src.utils                      import MetricsKit
 from src.utils                      import LogAssistant
 from src.LMAG.LMAGPipeline import LMAGPipeline
 torch.autograd.set_detect_anomaly(True)
-
-import wandb
 from loguru import logger
-import time
+
 os.chdir('/home/atman/a_workspace/D4A')
 
 OmegaConf.register_new_resolver("eval", eval)
@@ -50,6 +48,10 @@ def main():
     metrics                 = MetricsKit(cfg.metrics_cfg)
     log_ass                 = LogAssistant(cfg)
     gradient_cnt            = 0
+    cl_loss_weight = cfg.hyper_params.classifier_loss_weight
+    self_weight = cfg.hyper_params.self_loss_weight
+    cross_ip_weight = cfg.hyper_params.cross_ip_loss_weight
+    cross_txt_weight = cfg.hyper_params.cross_txt_loss_weight
     # train iter
     for e in range(cfg.epochs):
         for img_clean, gt_clean in dataloader: # 01, RGB
@@ -60,7 +62,7 @@ def main():
             anchor = patch_handler.anchor # patch left up corner
             pred, logits = classifier.inference(img_adv)
 
-            classifier_loss = classifier.class_loss(logits, gt_clean, anchor)
+            classifier_loss = classifier.class_loss(logits, gt_clean, anchor) * cl_loss_weight
             loss_iter = loss_iter + classifier_loss
             log_ass.total_loss += classifier_loss.item()
             log_ass.total_classify_loss += classifier_loss.item()
@@ -72,11 +74,18 @@ def main():
             for clean, adv, label in zip(diff_clean, diff_adv, diff_gt):
                 clean = clean.unsqueeze(0) # diffusion batch_size = 1, so align to BCHW
                 adv = adv.unsqueeze(0)
-                self_loss, cross_loss, clean_self, pack = diffusion_pipeline.get_loss(clean, adv, label)
-                loss_iter = loss_iter + self_loss + cross_loss
-                log_ass.total_loss += self_loss.item() + cross_loss.item()
+                self_loss, cross_txt_loss, cross_ip_loss, pack = diffusion_pipeline.get_loss(clean, adv, label)
+
+                self_loss = self_loss * self_weight
+                cross_txt_loss = cross_txt_loss * cross_txt_weight
+                cross_ip_loss = cross_ip_loss * cross_ip_weight
+
+                loss_iter = loss_iter + self_loss + cross_txt_loss + cross_ip_loss
+
+                log_ass.total_loss += self_loss.item() + cross_txt_loss.item() + cross_ip_loss
                 log_ass.total_self_loss += self_loss.item()
-                log_ass.total_cross_loss += cross_loss.item()
+                log_ass.total_cross_txt_loss += cross_txt_loss.item()
+                log_ass.total_cross_ip_loss += cross_ip_loss.item()
 
             loss_iter.backward()
             gradient_cnt += 1
@@ -95,7 +104,9 @@ def main():
                         f"| mIoU: {metrics.miou_score(pred, gt_clean):.4f} " +
                         f"| ClLoss: {log_ass.total_classify_loss / cfg.log_iter:.4f} " +
                         f"| SelfLoss: {log_ass.total_self_loss / cfg.log_iter:.4f} "+
-                        f"| CrossLoss: {log_ass.total_cross_loss / cfg.log_iter:.4f}")
+                        f"| CrossipLoss: {log_ass.total_cross_ip_loss / cfg.log_iter:.4f}" +
+                        f"| CrosstxtLoss: {log_ass.total_cross_txt_loss / cfg.log_iter:.4f}"
+                    )
                     log_ass.wandb_loss_push()
                 if log_ass.global_steps % (cfg.log_iter * 2) == 0:
                     log_ass.status_table.add_data(log_ass.global_steps, diffusion_pipeline.cur_prompt)

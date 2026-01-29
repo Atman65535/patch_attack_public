@@ -24,8 +24,10 @@ gradient_storage   : 50
 hyper_params :
   # Loss Control
   classifier_loss_weight : 1
-  self_loss_weight : 5e7
-  cross_loss_weight : 5e7
+  cross_loss_weight: 5e7 # legacy version
+  self_loss_weight: 1
+  cross_ip_loss_weight: 1e4
+  cross_txt_loss_weight: 1e3
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8

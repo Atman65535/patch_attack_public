@@ -43,7 +43,8 @@ class LogAssistant:
         self.total_loss = 0
         self.total_classify_loss = 0
         self.total_self_loss = 0
-        self.total_cross_loss = 0
+        self.total_cross_ip_loss = 0
+        self.total_cross_txt_loss = 0
         self.vis = Visualizer()
 
     @torch.no_grad()
@@ -51,7 +52,8 @@ class LogAssistant:
         self.total_loss = 0
         self.total_classify_loss = 0
         self.total_self_loss = 0
-        self.total_cross_loss = 0
+        self.total_cross_txt_loss = 0
+        self.total_cross_ip_loss = 0
 
     @torch.no_grad()
     def wandb_loss_push(self):
@@ -59,7 +61,8 @@ class LogAssistant:
             "Loss/Total": self.total_loss / self.log_iter,
             "Loss/Classifier": self.total_classify_loss /self.log_iter,
             "Loss/Self-Attention": self.total_self_loss / self.log_iter,
-            "Loss/Cross-Attention": self.total_cross_loss / self.log_iter,
+            "Loss/txt-Cross-Attention": self.total_cross_txt_loss / self.log_iter,
+            "Loss/ip-Cross-Attention": self.total_cross_ip_loss / self.log_iter,
         }, step=self.global_steps)
         self.clear()
 
