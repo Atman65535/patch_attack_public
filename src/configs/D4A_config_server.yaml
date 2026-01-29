@@ -45,8 +45,8 @@ hyper_params :
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/a_workspace/D4A/data/rellis3d"
-  model_pretrained : "/home/atman/a_workspace/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "/home/atman/home/D4A/data/rellis3d"
+  model_pretrained : "/home/atman/home/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
   diffusion_model_path: "runwayml/stable-diffusion-v1-5"
   IP_Adapter_path: "h94/IP-Adapter"
 
@@ -183,22 +183,22 @@ LMAG_cfg:
   #
   reference_img_size: 512
   label_dict:
+    0 : {"prompt":"dirt"    , "img_prompt":"./data/img_prompts/0_dirt.jpg", "valid": True}
     1: { "prompt": "grass"   , "img_prompt": "./data/img_prompts/1_grass.jpg", "valid": True }
     2: { "prompt": "tree"    , "img_prompt": "./data/img_prompts/2_tree.jpg", "valid": True }
     4 : {"prompt":"water"   , "img_prompt":"./data/img_prompts/4_water.jpg", "valid": True}
     5: { "prompt": "sky"     , "img_prompt": "./data/img_prompts/5_sky.jpg", "valid": True }
+    6: { "prompt": "vehicle" , "img_prompt": "./data/img_prompts/6_vehicle.jpg", "valid": False }
+    9: { "prompt": "building", "img_prompt": "./data/img_prompts/9_building.jpg", "valid": True }
     11: {"prompt":"person"  , "img_prompt":"./data/img_prompts/11_person.jpg", "valid": True}
     13: {"prompt":"bush"    , "img_prompt":"./data/img_prompts/13_bush.jpg", "valid": True}
     14: {"prompt":"concrete", "img_prompt":"./data/img_prompts/14_concrete.jpg", "valid": True}
+    15: {"prompt":"barrier" , "img_prompt":"./data/img_prompts/15_barrier.jpg", "valid": True}
     16: {"prompt":"puddle"  , "img_prompt":"./data/img_prompts/16_puddle.jpg", "valid": True}
     17: {"prompt":"mud"     , "img_prompt":"./data/img_prompts/17_mud.jpg", "valid": True}
-    0 : {"prompt":"dirt"    , "img_prompt":"", "valid": False}
-    3 : {"prompt":"pole"    , "img_prompt":"", "valid": False}
-    6: { "prompt": "vehicle" , "img_prompt": "", "valid": False }
-    7 : {"prompt":"object"  , "img_prompt":"", "valid": False}
-    8 : {"prompt":"asphalt" , "img_prompt":"", "valid": False}
-    9 : {"prompt":"building", "img_prompt":"", "valid": False}
-    10: {"prompt":"log"     , "img_prompt":"", "valid": False}
-    12: {"prompt":"fence"   , "img_prompt":"", "valid": False}
-    15: {"prompt":"barrier" , "img_prompt":"", "valid": False}
-    18: {"prompt":"rubble"  , "img_prompt":"", "valid": False}
+    18: {"prompt":"rocks"  , "img_prompt":"./data/img_prompts/18_rubble.jpg", "valid": True} # type rubble
+    3 : {"prompt":"pole"    , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
+    7 : {"prompt":"object"  , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
+    8 : {"prompt":"asphalt" , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
+    10: {"prompt":"log"     , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
+    12: {"prompt":"fence"   , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}

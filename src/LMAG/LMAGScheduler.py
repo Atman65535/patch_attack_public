@@ -128,8 +128,8 @@ class LMAGScheduler:
         if self.cross_uniformization:
             cross = cross - cross.min().item()
             cross = cross / cross.max().item()
-        if self.debug:
-            print(f"mean{cross.mean()}, std{cross.std()}, weight{weight}")
+        # if self.debug:
+        #     print(f"mean{cross.mean()}, std{cross.std()}, weight{weight}")
         return self.cross_criterion(cross) * weight / cross.numel()
 
 def view_one(path, attn, i, txt=None, return_img=False):

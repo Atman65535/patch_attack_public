@@ -14,6 +14,7 @@ import wandb
 from omegaconf import OmegaConf
 from torch.onnx.symbolic_opset8 import full
 from src.utils import Visualizer
+from src.LMAG.LMAGScheduler import view_one
 
 
 class LogAssistant:
@@ -87,11 +88,10 @@ class LogAssistant:
             "Visuals/Predictions": wandb.Image(self.vis.gt_show(pred,return_array=True)),
             "Visuals/GroundTruth": wandb.Image(self.vis.gt_show(gt_clean, return_array=True)),
             "Visuals/Raw_Patch": wandb.Image(patch.permute(1, 2, 0).detach().cpu().numpy(), caption="Generated Patch Texture"),
-            "Visuals/Self_Attention_clean": wandb.Image(self.vis.visualize_self_attn_map(clean_self), caption="self attn clean"),
-            "Visuals/Self_Attention_adv": wandb.Image(self.vis.visualize_self_attn_map(adv_self), caption="self attn adv"),
-            "Visuals/Cross_Attention_IP": wandb.Image(self.vis.visualize_cross_attn_map(cross_attn_ip), caption="cross attn"),
-            "Visuals/Cross_Attention_txt": wandb.Image(self.vis.visualize_cross_attn_map(cross_attn_txt), caption="cross attn"),
-            "Monitor/Status" : self.status_table
+            "Visuals/Self_Attention_clean": wandb.Image(view_one("", clean_self, 0, None, True), caption="self attn clean"),
+            "Visuals/Self_Attention_adv":   wandb.Image(view_one("", adv_self, 0, None, True), caption="self attn adv"),
+            "Visuals/Cross_Attention_IP":   wandb.Image(view_one("", cross_attn_ip, 0, None, True), caption="cross attn"),
+            "Visuals/Cross_Attention_txt":  wandb.Image(view_one("", cross_attn_txt, 0, None, True ), caption="cross attn"),
         }
         wandb.log(log_dict, step=self.global_steps)
 if __name__ == "__main__":
