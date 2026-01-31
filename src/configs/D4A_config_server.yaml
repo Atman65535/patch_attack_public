@@ -94,7 +94,7 @@ patch_handler_cfg :
   batch_size : ${batch_size}
   optim_name : "Adam"
   # Patch geometry
-  init_mode: ~ # send in None or a number. 255 -> 1, 0 -> 0
+  init_mode: 125 # send in None or a number. 255 -> 1, 0 -> 0
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
   rfes_edge: ${hyper_params.rfes_edge}
