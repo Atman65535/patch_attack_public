@@ -29,6 +29,7 @@ class PatchHandler:
         self.optim_lr           = cfg.lr
         self.optim_optim_name   = cfg.optim_name
 
+        self.init_mode = cfg.init_mode
         self.patch_load_from    = cfg.load_from
         self.patch_patch_size   = cfg.patch_size
         self.rfes_edge          = cfg.rfes_edge
@@ -66,7 +67,11 @@ class PatchHandler:
             if self.patch.shape[1] != self.patch_patch_size:
                 self.patch = np.random.rand(self.patch_patch_size, self.patch_patch_size, 3)
         else:
-            self.patch = np.random.rand(self.patch_patch_size, self.patch_patch_size, 3)
+            if self.init_mode is None:
+                self.patch = np.random.rand(self.patch_patch_size, self.patch_patch_size, 3)
+            else:
+                self.patch = np.full((self.patch_patch_size, self.patch_patch_size, 3),
+                                     self.init_mode / 255.0, dtype=np.float32)
         self.patch = self.patch.astype(np.float32)
 
         # np to tensor

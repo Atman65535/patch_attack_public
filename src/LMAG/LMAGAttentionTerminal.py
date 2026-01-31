@@ -19,8 +19,6 @@ class LMAGAttentionTerminal:
     def __init__(self, cfg):
         self.cond_maps_clean = self.clean_dict()
         self.cond_maps_adv = self.clean_dict()
-        if not cfg.enable_cfg:
-            raise ValueError("Make sure cfg is enabled")
         self.batch_size = 4
         self.target_resolution = cfg.img_height // cfg.target_downscale
 

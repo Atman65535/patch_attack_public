@@ -26,11 +26,8 @@ gradient_storage   : 20
 
 hyper_params :
   # Loss Control
-  classifier_loss_weight : 1
-  cross_loss_weight: 5e7 # legacy version
-  self_loss_weight : 1
-  cross_ip_loss_weight : 1e4
-  cross_txt_loss_weight: 1e3
+  classifier_loss_weight : 0.5
+  self_loss_weight : 0.1
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8
@@ -40,15 +37,14 @@ hyper_params :
   # patch
   patch_alpha : 0.25  # lower alpha means lower visibility
   # diffusion
-  intermediate_steps : 3
-  RFES_edge : 16 # 0 16 32 or more.
+  rfes_edge : 16 # 0 16 32 or more.
+
 
 paths :
   patch_load_from : ""
   dataset_base_addr : "/home/atman/home/D4A/data/rellis3d"
   model_pretrained : "/home/atman/home/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
   diffusion_model_path: "runwayml/stable-diffusion-v1-5"
-  IP_Adapter_path: "h94/IP-Adapter"
 
 metrics_cfg:
   # MulticlassJaccardIndex and MAcc(ASR)
@@ -98,10 +94,12 @@ patch_handler_cfg :
   batch_size : ${batch_size}
   optim_name : "Adam"
   # Patch geometry
+  init_mode: ~ # send in None or a number. 255 -> 1, 0 -> 0
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
+  rfes_edge: ${hyper_params.rfes_edge}
   ignore_label: ${ignore_label}
-  location : "random"
+  location : "ground"
   # 0.05 patch + (1-005) Img
   alpha : ${hyper_params.patch_alpha}
   enable_eot : True
@@ -112,12 +110,11 @@ patch_handler_cfg :
 LMAG_cfg:
   debug: ${debug}
   diffusion_model_path: ${paths.diffusion_model_path}
-  IP_Adapter_path: ${paths.IP_Adapter_path}
-  rfes_edge: ${hyper_params.RFES_edge}
+  rfes_edge: ${hyper_params.rfes_edge}
   # Basic settings
-  resolution: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
-  img_height: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
-  img_width: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
+  resolution: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
+  img_height: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
+  img_width: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
   # Sensitiveness
   timestep: 200
   # extract map stratgy
@@ -125,6 +122,7 @@ LMAG_cfg:
   self_pca_start: 0
   self_pca_layers: 4
   # criterions
-  self_criterion: "CosineSimilarity"
+  self_criterion: "MSELoss"
   self_criterion_kwargs:
-    dim: -1
+    reduction: "mean"
+    #dim: -1

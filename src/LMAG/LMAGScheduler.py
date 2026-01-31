@@ -34,7 +34,6 @@ class LMAGScheduler:
             self.self_criterion = attr(**cfg.self_criterion_kwargs)
 
         self.self_pca_layers = cfg.self_pca_layers
-        self.txt_mode  = cfg.txt_mode
         self.self_pca_start = cfg.self_pca_start
         self.debug = cfg.get("debug", False)
 

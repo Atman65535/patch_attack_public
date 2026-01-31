@@ -93,6 +93,7 @@ patch_handler_cfg :
   batch_size : ${batch_size}
   optim_name : "Adam"
   # Patch geometry
+  init_mode: 125 # send in None or a number. 255 -> 1, 0 -> 0
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
   rfes_edge: ${hyper_params.rfes_edge}
@@ -117,12 +118,8 @@ LMAG_cfg:
   timestep: 200
   # extract map stratgy
   target_downscale: 16
-  enable_cfg: True
-  attn_cfg: 3
   self_pca_start: 0
   self_pca_layers: 4
-  ip_token_idx: 1
-  txt_mode: "mean" # mean
   # criterions
   self_criterion: "MSELoss"
   self_criterion_kwargs:
