@@ -22,8 +22,6 @@ class LMAGAttentionTerminal:
         if not cfg.enable_cfg:
             raise ValueError("Make sure cfg is enabled")
         self.batch_size = 4
-        self.attn_cfg = cfg.attn_cfg
-        self.enable_attn_cfg = True if self.attn_cfg > 0 else False
         self.target_resolution = cfg.img_height // cfg.target_downscale
 
     def save_attention(self, attn_prob, block, category):
@@ -42,41 +40,34 @@ class LMAGAttentionTerminal:
         map_adv_cond = prob_cond[0:prob_cond.shape[0]//2, ...]
         map_clean_cond = prob_cond[prob_cond.shape[0]//2:, ...]
 
-        if self.enable_attn_cfg:
-            map_adv_uncond = prob_uncond[prob_uncond.shape[0]//2:, ...]
-            map_clean_uncond = prob_uncond[:prob_uncond.shape[0]//2, ...]
-            map_adv = map_adv_uncond + self.attn_cfg * (map_adv_cond - map_adv_uncond)
-            map_clean = map_clean_uncond + self.attn_cfg * (map_clean_cond - map_clean_uncond)
-        else:
-            map_adv = map_adv_cond
-            map_clean = map_clean_cond
-
         res = int(np.sqrt(attn_prob.shape[1]))
-        map_adv = torch.mean(map_adv, dim=0).reshape(res, res, -1)
-        map_clean = torch.mean(map_clean, dim=0).reshape(res, res, -1)
+        map_adv_cond = torch.mean(map_adv_cond, dim=0).reshape(res, res, -1)
+        map_clean_cond = torch.mean(map_clean_cond, dim=0).reshape(res, res, -1)
 
-        self.cond_maps_adv[key].append(map_adv)
-        self.cond_maps_clean[key].append(map_clean)
+        # The tomb for cross cfg. No them anymore...
+
+        self.cond_maps_adv[key].append(map_adv_cond)
+        self.cond_maps_clean[key].append(map_clean_cond)
 
     def reset(self):
         self.cond_maps_clean = self.clean_dict()
         self.cond_maps_adv = self.clean_dict()
 
     def replace_unet(self, unet):
-        def recr_replace(callable, name):
-            if callable.__class__.__name__ == "Attention":
-                ins = LMAGProcessor(callable.processor, name, self)
-                callable.processor = ins
+        def recr_replace(func, name):
+            if func.__class__.__name__ == "Attention":
+                ins = LMAGProcessor(func.processor, name, self)
+                func.processor = ins
                 return
-            if callable.children() is not None:
-                for ch in callable.children():
-                    recr_replace(ch, f"{name}.{ch.__class__.__name__}")
+            if func.children() is not None:
+                for _name, ch in func.named_children():
+                    recr_replace(ch, f"{name}.{_name}")
         recr_replace(unet, "")
 
     def get_attn_map(self,
                      category="self",
                      which="adv",
-                     stage=None): # TODO Extract raw IP attention
+                     stage=None): # No IP Now
         """category='self', 'txt', or 'ip'
             stage:None, down, up, mid, None for average"""
         if which == "adv":
@@ -130,7 +121,6 @@ def store_attention_map(dir_path,
             #image = np.repeat(np.expand_dims(image, axis=2), 3, axis=2).astype(np.uint8)
             #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             image = cv2.applyColorMap(image.astype(np.uint8), cv2.COLORMAP_JET)
-            #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_NEAREST)
             cv2.imwrite(os.path.join(dir_path, f"self{i}.png"), image)
     if category == "txt" or category=='ip':

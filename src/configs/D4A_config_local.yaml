@@ -15,22 +15,19 @@ diffusion_arch: "L-MAG"
 debug: True
 
 epochs             : 30
-lr                 : 1.0
+lr                 : 0.01
 ignore_label       : 255
 batch_size         : 2
 num_workers        : 4
 patch_size         : 128
 crop_sizeHW        : [512, 512]
-log_iter           : 1
-gradient_storage   : 2
+log_iter           : 60
+gradient_storage   : 30
 
 hyper_params :
   # Loss Control
-  classifier_loss_weight : 1
-  cross_loss_weight: 5e7 # legacy version
-  self_loss_weight : 1
-  cross_ip_loss_weight : 1e4
-  cross_txt_loss_weight: 1e3
+  classifier_loss_weight : 0.5
+  self_loss_weight : 0.1
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8
@@ -38,17 +35,15 @@ hyper_params :
   mean : [0.485, 0.456, 0.406]
   std  : [0.229, 0.224, 0.225]
   # patch
-  patch_alpha : 0.5  # lower alpha means lower visibility
+  patch_alpha : 0.25  # lower alpha means lower visibility
   # diffusion
-  intermediate_steps : 1
-  RFES_edge : 16 # 0 16 32 or more.
+  rfes_edge : 16 # 0 16 32 or more.
 
 paths :
   patch_load_from : ""
   dataset_base_addr : "/home/atman/a_workspace/D4A/data/rellis3d"
   model_pretrained : "/home/atman/a_workspace/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
-  diffusion_model_path: "/home/atman/a_workspace/D4A/models/runwayml/stable-diffusion-v1-5"
-  IP_Adapter_path: "/home/atman/a_workspace/D4A/models/h94/IP-Adapter"
+  diffusion_model_path: "./models/runwayml/stable-diffusion-v1-5"
 
 metrics_cfg:
   # MulticlassJaccardIndex and MAcc(ASR)
@@ -100,8 +95,9 @@ patch_handler_cfg :
   # Patch geometry
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
+  rfes_edge: ${hyper_params.rfes_edge}
   ignore_label: ${ignore_label}
-  location : "random"
+  location : "ground"
   # 0.05 patch + (1-005) Img
   alpha : ${hyper_params.patch_alpha}
   enable_eot : True
@@ -109,57 +105,16 @@ patch_handler_cfg :
   scale : [0.8, 1.2]
   max_translate : 0.05
 
-diffusion_cfg :
-  diffusion_arch: ${diffusion_arch}
-  batch_size_of_diffusion: 1
-  diffusion_resolution: ${patch_size}
-  num_inference_steps: 50
-  guidance_scale: 4.5
-  intermediate_steps: ${hyper_params.intermediate_steps}
-  self_weight : ${hyper_params.self_loss_weight}
-  cross_weight : ${hyper_params.cross_loss_weight}
-  RFES_edge : ${hyper_params.RFES_edge}
-  label_dict :
-    0: "dirt"
-    1: "grass"
-    2: "tree"
-    3: "pole"
-    4: "water"
-    5: "sky"
-    6: "vehicle"
-    7: "object"
-    8: "asphalt"
-    9: "building"
-    10: "log"
-    11: "person"
-    12: "fence"
-    13: "bush"
-    14: "concrete"
-    15: "barrier"
-    16: "puddle"
-    17: "mud"
-    18: "rubble"
-
-
 LMAG_cfg:
   debug: ${debug}
   diffusion_model_path: ${paths.diffusion_model_path}
-  IP_Adapter_path: ${paths.IP_Adapter_path}
-  rfes_edge: ${hyper_params.RFES_edge}
+  rfes_edge: ${hyper_params.rfes_edge}
   # Basic settings
-  resolution: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
-  img_height: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
-  img_width: ${eval:'${patch_size} + 2 * ${hyper_params.RFES_edge}'}
-  sigmas: null
-  eta: 0
-  guidance_rescale: 0.0
-  lora_scale: null
-  clip_skip: null
+  resolution: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
+  img_height: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
+  img_width: ${eval:'${patch_size} + 2 * ${hyper_params.rfes_edge}'}
   # Sensitiveness
   timestep: 200
-  # sigmoid adaptive weight
-  enable_self_adapt_weight : False
-  confidence_threshold: 0.7
   # extract map stratgy
   target_downscale: 16
   enable_cfg: True
@@ -168,37 +123,8 @@ LMAG_cfg:
   self_pca_layers: 4
   ip_token_idx: 1
   txt_mode: "mean" # mean
-  ip_stage: "down"
-  txt_stage: null # None means all (actually down and up)
   # criterions
-  self_criterion: "CosineSimilarity"
+  self_criterion: "MSELoss"
   self_criterion_kwargs:
-    dim: -1
-  cross_criterion: "var"
-  cross_uniformization: False
-  # Balance weights,
-  self_attn_weight: 1
-  ip_cross_weight: 1
-  txt_cross_weight: 1
-  #
-  reference_img_size: 512
-  label_dict:
-    0 : {"prompt":"dirt"    , "img_prompt":"./data/img_prompts/0_dirt.jpg", "valid": True}
-    1: { "prompt": "grass"   , "img_prompt": "./data/img_prompts/1_grass.jpg", "valid": True }
-    2: { "prompt": "tree"    , "img_prompt": "./data/img_prompts/2_tree.jpg", "valid": True }
-    4 : {"prompt":"water"   , "img_prompt":"./data/img_prompts/4_water.jpg", "valid": True}
-    5: { "prompt": "sky"     , "img_prompt": "./data/img_prompts/5_sky.jpg", "valid": True }
-    6: { "prompt": "vehicle" , "img_prompt": "./data/img_prompts/6_vehicle.jpg", "valid": False }
-    9: { "prompt": "building", "img_prompt": "./data/img_prompts/9_building.jpg", "valid": True }
-    11: {"prompt":"person"  , "img_prompt":"./data/img_prompts/11_person.jpg", "valid": True}
-    13: {"prompt":"bush"    , "img_prompt":"./data/img_prompts/13_bush.jpg", "valid": True}
-    14: {"prompt":"concrete", "img_prompt":"./data/img_prompts/14_concrete.jpg", "valid": True}
-    15: {"prompt":"barrier" , "img_prompt":"./data/img_prompts/15_barrier.jpg", "valid": True}
-    16: {"prompt":"puddle"  , "img_prompt":"./data/img_prompts/16_puddle.jpg", "valid": True}
-    17: {"prompt":"mud"     , "img_prompt":"./data/img_prompts/17_mud.jpg", "valid": True}
-    18: {"prompt":"rocks"  , "img_prompt":"./data/img_prompts/18_rubble.jpg", "valid": True} # type rubble
-    3 : {"prompt":"pole"    , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
-    7 : {"prompt":"object"  , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
-    8 : {"prompt":"asphalt" , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
-    10: {"prompt":"log"     , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
-    12: {"prompt":"fence"   , "img_prompt":"./data/img_prompts/common.jpg", "valid": True}
+    reduction: "mean"
+    #dim: -1

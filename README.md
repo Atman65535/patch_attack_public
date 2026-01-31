@@ -1,7 +1,13 @@
-# Diff_Patch_Attack v0.1.0 
+# Diff_Patch_Attack v0.3.0 
 
 ## Brief
-
+Why there isn't 0.2.0 ? Aborted. That version contains unstable cross attention functions. So, everything will be composed again in this version.  
+Just for self attention.
+- [ ] PGD classic adversarial patch generation
+- [ ] EOT enables the transferability of Patch
+- [ ] Self attention from diffusion pipeline, restrict structure features.
+- [ ] Non-Inverse UNet, one step self attention extract.
+- [ ] RFES, expand the horizon for patch smooth
 
 ## Install
 Our core reliance libraries are `torch`, `segmentation-models-pytorch`, `transformers`, `diffusers`  
@@ -21,11 +27,9 @@ We don't use safety checker, but the download command below will download it aut
 cd ./D4A
 mkdir models
 huggingface-cli download runwayml/stable-diffusion-v1-5 --local-dir ./models/runwayml/stable-diffusion-v1-5 --local-dir-use-symlinks False
-huggingface-cli download h94/IP-Adapter --include "models/ip-adapter_sd15.bin" "image_encoder" --local-dir ./models/h94/IP-Adapter --local-dir-use-symlinks False
 
 mkdir data
-ln -s <your rellis3d dataset root> ./data/rellis3d
-mv <image prompts dir> ./data/img_prompts
+ln -s <your rellis3d dataset root> ./data/rellis3d=
 ~~~
 
 ## Execute
