@@ -15,18 +15,18 @@ diffusion_arch: "L-MAG"
 debug: True
 
 epochs             : 30
-lr                 : 0.01 #05
+lr                 : 0.03 #05
 ignore_label       : 255
 batch_size         : 2
 num_workers        : 4
 patch_size         : 256
 crop_sizeHW        : [1024, 1024]
-log_iter           : 200
-gradient_storage   : 20
+log_iter           : 400
+gradient_storage   : 200
 
 hyper_params :
   # Loss Control
-  classifier_loss_weight : 0.5
+  classifier_loss_weight : 2
   self_loss_weight : 0.1
   # Classifier: outer enhancement
   outer_enhancement : True
@@ -42,8 +42,8 @@ hyper_params :
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/home/D4A/data/rellis3d"
-  model_pretrained : "/home/atman/home/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "./data/rellis3d"
+  model_pretrained : "./src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
   diffusion_model_path: "runwayml/stable-diffusion-v1-5"
 
 metrics_cfg:
@@ -94,7 +94,7 @@ patch_handler_cfg :
   batch_size : ${batch_size}
   optim_name : "Adam"
   # Patch geometry
-  init_mode: 125 # send in None or a number. 255 -> 1, 0 -> 0
+  init_mode: ~ # send in None or a number. 255 -> 1, 0 -> 0
   load_from : ${paths.patch_load_from}
   patch_size : ${patch_size}
   rfes_edge: ${hyper_params.rfes_edge}

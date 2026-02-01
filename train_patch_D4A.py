@@ -101,6 +101,8 @@ def main():
                                              pack[0], pack[1])
 
                     log_ass.clear()
+        if not os.path.isdir:
+            os.mkdir("./patch")
         patch_handler.dump(path=f"./patch/patch_{e}.png")
 
 if __name__ == "__main__":

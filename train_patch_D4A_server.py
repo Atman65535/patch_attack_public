@@ -20,7 +20,7 @@ from src.LMAG.LMAGPipeline import LMAGPipeline
 torch.autograd.set_detect_anomaly(True)
 from loguru import logger
 
-os.chdir('/home/atman/home/a_workspace/D4A')
+os.chdir('/home/atman/home/workspace/D4A')
 
 OmegaConf.register_new_resolver("eval", eval)
 config_file = "./src/configs/D4A_config_local.yaml"
@@ -101,6 +101,8 @@ def main():
                                                  pack[0], pack[1])
 
                     log_ass.clear()
+        if not os.path.isdir:
+            os.mkdir("./patch")
         patch_handler.dump(path=f"./patch/patch_{e}.png")
 
 if __name__ == "__main__":

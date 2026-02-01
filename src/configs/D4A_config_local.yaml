@@ -8,14 +8,14 @@
 # ******************** Train Settings ******************** #
 
 project: "D4A_Diffusion with Agumented Attention Adversarial Attack"
-exp_name: "Entity-Patch-Exp"
+exp_name: "HIGH LR and SELF weight"
 model_arch: "UNet++"
 diffusion_arch: "L-MAG"
 
 debug: True
 
 epochs             : 30
-lr                 : 0.01
+lr                 : 0.1
 ignore_label       : 255
 batch_size         : 2
 num_workers        : 4
@@ -26,8 +26,8 @@ gradient_storage   : 30
 
 hyper_params :
   # Loss Control
-  classifier_loss_weight : 0.5
-  self_loss_weight : 0.1
+  classifier_loss_weight : 1
+  self_loss_weight : 5e3
   # Classifier: outer enhancement
   outer_enhancement : True
   outer_enhan_patch_supress_weight : 0.8
@@ -41,8 +41,8 @@ hyper_params :
 
 paths :
   patch_load_from : ""
-  dataset_base_addr : "/home/atman/a_workspace/D4A/data/rellis3d"
-  model_pretrained : "/home/atman/a_workspace/D4A/src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
+  dataset_base_addr : "./data/rellis3d"
+  model_pretrained : "./src/configs/pretrained/UNet++_rellis_50e_512x512.pth"
   diffusion_model_path: "./models/runwayml/stable-diffusion-v1-5"
 
 metrics_cfg:

@@ -1,5 +1,11 @@
 # Diff_Patch_Attack v0.3.0 
 
+## ⚠️ Project Status
+
+This repository is frozen and not under active development.
+Future research explorations and experimental implementations
+are conducted elsewhere and are not reflected in this codebase.
+
 ## Brief
 Why there isn't 0.2.0 ? Aborted. That version contains unstable cross attention functions. So, everything will be composed again in this version.  
 Just for self attention.

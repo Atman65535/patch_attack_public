@@ -51,10 +51,11 @@ class LMAGScheduler:
         selfattn = selfattn.reshape(selfattn.shape[-1], selfattn.shape[-1])
         u, s, vh = torch.linalg.svd(selfattn - torch.mean(selfattn, dim=1, keepdim=True))
         end = self.self_pca_start + self.self_pca_layers
-        attn = vh[self.self_pca_start:end, :].mean(dim=0, keepdim=False)
-        attn = attn.reshape(shape, shape)
-        attn = (attn - attn.min())
-        attn = attn / attn.max()
+        attn = vh[self.self_pca_start:end, :]  # .mean(dim=0, keepdim=False)
+        attn = attn.reshape(-1, shape, shape)
+        # warning, Remember your fault this time. No more.
+        # attn = (attn - attn.min())
+        # attn = attn / attn.max()
         return attn
 
     def attn_loss(self):
@@ -65,8 +66,15 @@ class LMAGScheduler:
         selfattn_cl = self.self_pca(selfattn_cl)
         self_loss = self.self_attn_loss(selfattn_cl, selfattn_adv)
         # bag for visualize only
-        attn_bag = (selfattn_cl.detach(), selfattn_adv.detach())
+        attn_bag = (self._aux_vis(selfattn_cl), self._aux_vis(selfattn_adv))
         return self_loss, attn_bag
+
+    @staticmethod
+    def _aux_vis(self_map):
+        self_map = self_map.detach()
+        self_map = self_map.mean(dim=0)
+        self_map = (self_map - self_map.min()) / (self_map.max() - self_map.min())
+        return self_map
 
     def self_attn_loss(self, self_clean, self_adv, weight=1):
         """Restrict self structure
@@ -74,6 +82,8 @@ class LMAGScheduler:
         loss = self.self_criterion(self_clean.view(-1), self_adv.view(-1))
         if type(self.self_criterion) is torch.nn.CosineSimilarity:
             return -1 * loss
+        elif type(self.self_criterion) is torch.nn.MSELoss:
+            return loss
         else: return loss
 
 if __name__ == "__main__":
